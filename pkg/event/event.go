@@ -29,17 +29,17 @@ import (
 // Events from different endpoints need to be casted to KubewatchEvent
 // before being able to be handled by handler
 type Event struct {
-	Namespace         string
-	Kind              string
-	Component         string
-	Host              string
-	Reason            string
-	Status            string
-	Name              string
-	message           string
-	ResourceRevision  string
-	CreationTimeStamp v1.Time
-	UID               types.UID
+	Namespace         string	`json:"namespace"`
+	Kind              string	`json:"kind"`
+	Component         string	`json:"component"`
+	Host              string	`json:"host"`
+	Reason            string	`json:"reason"`
+	Status            string	`json:"status"`
+	Name              string	`json:"name"`
+	message           string	`json:"message"`
+	ResourceRevision  string	`json:"resourceRevision"`
+	CreationTimeStamp v1.Time	`json:"creationTimeStamp"`
+	UID               types.UID	`json:"uid"`
 }
 
 var m = map[string]string{
@@ -88,11 +88,7 @@ func New(obj interface{}, action string) Event {
 	case *api_v1.Event:
 		kind = "event"
 		eventMetaData = getRolloutEventMetadata(object)
-		if eventMetaData != nil {
-			fmt.Printf("eventMetaData: %+v\n", eventMetaData)
-		}
 	case Event:
-		fmt.Println("Found Event data type")
 		name = object.Name
 		kind = object.Kind
 		namespace = object.Namespace
@@ -118,7 +114,6 @@ func New(obj interface{}, action string) Event {
 		kbEvent.Name = eventMetaData.Name
 		kbEvent.UID = eventMetaData.UID
 	}
-	fmt.Printf("data payload: %+v\n", kbEvent)
 	return kbEvent
 }
 

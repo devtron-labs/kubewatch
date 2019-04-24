@@ -49,7 +49,7 @@ type Webhook struct {
 }
 
 type WebhookMessage struct {
-	Text string `json:"text"`
+	kbEvent.Event
 }
 
 // Init prepares Webhook configuration
@@ -101,7 +101,7 @@ func checkMissingWebhookVars(s *Webhook) error {
 
 func prepareWebhookMessage(e kbEvent.Event, m *Webhook) *WebhookMessage {
 	return &WebhookMessage{
-		e.Message(),
+		e,
 	}
 
 }

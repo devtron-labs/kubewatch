@@ -480,7 +480,6 @@ func (c *Controller) processItem(newEvent Event) error {
 	if err != nil {
 		return fmt.Errorf("Error fetching object with key %s from store: %v", newEvent.key, err)
 	}
-	fmt.Printf("Processing Item %+v\n", obj)
 	// get object's metedata
 	objectMeta := utils.GetObjectMetaData(obj)
 

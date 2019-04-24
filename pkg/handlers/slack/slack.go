@@ -115,7 +115,7 @@ func prepareSlackAttachment(e event.Event) slack.Attachment {
 	attachment := slack.Attachment{
 		Fields: []slack.AttachmentField{
 			slack.AttachmentField{
-				Title: "kubewatch",
+				Title: "Deployment Status",
 				Value: e.Message(),
 			},
 		},
