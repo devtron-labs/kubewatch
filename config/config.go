@@ -49,6 +49,7 @@ type Resource struct {
 	Secret                bool `json:"secret"`
 	ConfigMap             bool `json:"configmap"`
 	Ingress               bool `json:"ing"`
+	Events                bool `json:events`
 }
 
 // Config struct contains kubewatch configuration
@@ -180,6 +181,9 @@ func (c *Config) CheckMissingResourceEnvvars() {
 	if !c.Resource.Ingress && os.Getenv("KW_INGRESS") == "true" {
 		c.Resource.Ingress = true
 	}
+	if !c.Resource.Events && os.Getenv("KW_EVENTS") == "true" {
+		c.Resource.Events = true
+	}
 	if (c.Handler.Slack.Channel == "") && (os.Getenv("SLACK_CHANNEL") != "") {
 		c.Handler.Slack.Channel = os.Getenv("SLACK_CHANNEL")
 	}
@@ -212,15 +216,15 @@ func getConfigFile() string {
 }
 
 func configDir() string {
-    if configDir := os.Getenv("KW_CONFIG"); configDir != "" {
-        return configDir
-    }
+	if configDir := os.Getenv("KW_CONFIG"); configDir != "" {
+		return configDir
+	}
 
-    if runtime.GOOS == "windows" {
-        home := os.Getenv("USERPROFILE")
-        return home
-    }
-    return os.Getenv("HOME")
+	if runtime.GOOS == "windows" {
+		home := os.Getenv("USERPROFILE")
+		return home
+	}
+	return os.Getenv("HOME")
 	//path := "/etc/kubewatch"
 	//if _, err := os.Stat(path); os.IsNotExist(err) {
 	//	os.Mkdir(path, 755)

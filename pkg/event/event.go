@@ -15,6 +15,8 @@ package event
 
 import (
 	"fmt"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/bitnami-labs/kubewatch/pkg/utils"
 	apps_v1beta1 "k8s.io/api/apps/v1beta1"
@@ -27,13 +29,17 @@ import (
 // Events from different endpoints need to be casted to KubewatchEvent
 // before being able to be handled by handler
 type Event struct {
-	Namespace string
-	Kind      string
-	Component string
-	Host      string
-	Reason    string
-	Status    string
-	Name      string
+	Namespace         string
+	Kind              string
+	Component         string
+	Host              string
+	Reason            string
+	Status            string
+	Name              string
+	message           string
+	ResourceRevision  string
+	CreationTimeStamp v1.Time
+	UID               types.UID
 }
 
 var m = map[string]string{
@@ -45,13 +51,13 @@ var m = map[string]string{
 // New create new KubewatchEvent
 func New(obj interface{}, action string) Event {
 	var namespace, kind, component, host, reason, status, name string
-
+	var eventMetaData *EventMetaData
 	objectMeta := utils.GetObjectMetaData(obj)
 	namespace = objectMeta.Namespace
 	name = objectMeta.Name
 	reason = action
 	status = m[action]
-
+	fmt.Printf("KubeWatchEvent %+v\n", obj)
 	switch object := obj.(type) {
 	case *ext_v1beta1.DaemonSet:
 		kind = "daemon set"
@@ -79,7 +85,14 @@ func New(obj interface{}, action string) Event {
 		kind = "secret"
 	case *api_v1.ConfigMap:
 		kind = "configmap"
+	case *api_v1.Event:
+		kind = "event"
+		eventMetaData = getRolloutEventMetadata(object)
+		if eventMetaData != nil {
+			fmt.Printf("eventMetaData: %+v\n", eventMetaData)
+		}
 	case Event:
+		fmt.Println("Found Event data type")
 		name = object.Name
 		kind = object.Kind
 		namespace = object.Namespace
@@ -94,6 +107,18 @@ func New(obj interface{}, action string) Event {
 		Status:    status,
 		Name:      name,
 	}
+	if eventMetaData != nil {
+		kbEvent.Kind = eventMetaData.Kind
+		kbEvent.Component = eventMetaData.SourceComponent
+		kbEvent.Namespace = eventMetaData.NameSpace
+		kbEvent.Reason = eventMetaData.Reason
+		kbEvent.message = eventMetaData.Message
+		kbEvent.ResourceRevision = eventMetaData.ResourceVersion
+		kbEvent.CreationTimeStamp = eventMetaData.CreationTimeStamp
+		kbEvent.Name = eventMetaData.Name
+		kbEvent.UID = eventMetaData.UID
+	}
+	fmt.Printf("data payload: %+v\n", kbEvent)
 	return kbEvent
 }
 
@@ -101,6 +126,7 @@ func New(obj interface{}, action string) Event {
 // included as a part of event packege to enhance code resuablity across handlers.
 func (e *Event) Message() (msg string) {
 	// using switch over if..else, since the format could vary based on the kind of the object in future.
+	fmt.Println("Message type: " + e.Kind)
 	switch e.Kind {
 	case "namespace":
 		msg = fmt.Sprintf(
@@ -108,6 +134,8 @@ func (e *Event) Message() (msg string) {
 			e.Name,
 			e.Reason,
 		)
+	case "Event":
+		return e.message
 	default:
 		msg = fmt.Sprintf(
 			"A `%s` in namespace `%s` has been `%s`:\n`%s`",
@@ -118,4 +146,33 @@ func (e *Event) Message() (msg string) {
 		)
 	}
 	return msg
+}
+
+func getRolloutEventMetadata(event *api_v1.Event) *EventMetaData {
+	if event.InvolvedObject.Kind == "Rollout" {
+		eventMetaData := &EventMetaData{}
+		eventMetaData.Name = event.InvolvedObject.Name
+		eventMetaData.Kind = event.InvolvedObject.Kind
+		eventMetaData.NameSpace = event.InvolvedObject.Namespace
+		eventMetaData.UID = event.InvolvedObject.UID
+		eventMetaData.ResourceVersion = event.InvolvedObject.ResourceVersion
+		eventMetaData.CreationTimeStamp = event.ObjectMeta.CreationTimestamp
+		eventMetaData.Message = event.Message
+		eventMetaData.Reason = event.Reason
+		eventMetaData.SourceComponent = event.Source.Component
+		return eventMetaData
+	}
+	return nil
+}
+
+type EventMetaData struct {
+	Kind              string    `json:"kind"`
+	Name              string    `json:"name"`
+	NameSpace         string    `json:"nameSpace"`
+	ResourceVersion   string    `json:"resourceVersion"`
+	CreationTimeStamp v1.Time   `json:"creationTimeStamp"`
+	SourceComponent   string    `json:"sourceComponent"`
+	Reason            string    `json:"reason"`
+	Message           string    `json:"message"`
+	UID               types.UID `json:"uid"`
 }

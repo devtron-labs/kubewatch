@@ -17,7 +17,9 @@ limitations under the License.
 package handlers
 
 import (
+	"fmt"
 	"github.com/bitnami-labs/kubewatch/config"
+	"github.com/bitnami-labs/kubewatch/pkg/event"
 	"github.com/bitnami-labs/kubewatch/pkg/handlers/slack"
 	"github.com/bitnami-labs/kubewatch/pkg/handlers/hipchat"
 	"github.com/bitnami-labs/kubewatch/pkg/handlers/mattermost"
@@ -56,7 +58,8 @@ func (d *Default) Init(c *config.Config) error {
 }
 
 func (d *Default) ObjectCreated(obj interface{}) {
-
+	e := event.New(obj, "created")
+	fmt.Printf("Created: %+v\n", e)
 }
 
 func (d *Default) ObjectDeleted(obj interface{}) {
@@ -64,5 +67,6 @@ func (d *Default) ObjectDeleted(obj interface{}) {
 }
 
 func (d *Default) ObjectUpdated(oldObj, newObj interface{}) {
-
+	e := event.New(oldObj, "updated")
+	fmt.Printf("Updated: %+v\n", e)
 }

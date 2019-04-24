@@ -50,10 +50,10 @@ var serverStartTime time.Time
 
 // Event indicate the informerEvent
 type Event struct {
-	key          string
-	eventType    string
-	namespace    string
-	resourceType string
+	key           string
+	eventType     string
+	namespace     string
+	resourceType  string
 }
 
 // Controller object
@@ -337,6 +337,28 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 		go c.Run(stopCh)
 	}
 
+	if conf.Resource.Events {
+		informer := cache.NewSharedIndexInformer(
+			&cache.ListWatch{
+				ListFunc: func(options meta_v1.ListOptions) (runtime.Object, error) {
+					return kubeClient.CoreV1().Events(conf.Namespace).List(options)
+				},
+				WatchFunc: func(options meta_v1.ListOptions) (watch.Interface, error) {
+					return kubeClient.CoreV1().Events(conf.Namespace).Watch(options)
+				},
+			},
+			&api_v1.Event{},
+			0, //Skip resync
+			cache.Indexers{},
+		)
+
+		c := newResourceController(kubeClient, eventHandler, informer, "event")
+		stopCh := make(chan struct{})
+		defer close(stopCh)
+
+		go c.Run(stopCh)
+	}
+
 	sigterm := make(chan os.Signal, 1)
 	signal.Notify(sigterm, syscall.SIGTERM)
 	signal.Notify(sigterm, syscall.SIGINT)
@@ -458,6 +480,7 @@ func (c *Controller) processItem(newEvent Event) error {
 	if err != nil {
 		return fmt.Errorf("Error fetching object with key %s from store: %v", newEvent.key, err)
 	}
+	fmt.Printf("Processing Item %+v\n", obj)
 	// get object's metedata
 	objectMeta := utils.GetObjectMetaData(obj)
 
