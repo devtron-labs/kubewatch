@@ -29,17 +29,17 @@ import (
 // Events from different endpoints need to be casted to KubewatchEvent
 // before being able to be handled by handler
 type Event struct {
-	Namespace         string	`json:"namespace"`
-	Kind              string	`json:"kind"`
-	Component         string	`json:"component"`
-	Host              string	`json:"host"`
-	Reason            string	`json:"reason"`
-	Status            string	`json:"status"`
-	Name              string	`json:"name"`
-	message           string	`json:"message"`
-	ResourceRevision  string	`json:"resourceRevision"`
-	CreationTimeStamp v1.Time	`json:"creationTimeStamp"`
-	UID               types.UID	`json:"uid"`
+	Namespace         string    `json:"namespace"`
+	Kind              string    `json:"kind"`
+	Component         string    `json:"component"`
+	Host              string    `json:"host"`
+	Reason            string    `json:"reason"`
+	Status            string    `json:"status"`
+	Name              string    `json:"name"`
+	message           string    `json:"message"`
+	ResourceRevision  string    `json:"resourceRevision"`
+	CreationTimeStamp v1.Time   `json:"creationTimeStamp"`
+	UID               types.UID `json:"uid"`
 }
 
 var m = map[string]string{
@@ -155,6 +155,10 @@ func getRolloutEventMetadata(event *api_v1.Event) *EventMetaData {
 		eventMetaData.Message = event.Message
 		eventMetaData.Reason = event.Reason
 		eventMetaData.SourceComponent = event.Source.Component
+		ann := event.Annotations
+		eventMetaData.PipelineName, _ = ann["pipelineName"]
+		eventMetaData.ReleaseVersion, _ = ann["releaseVersion"]
+		eventMetaData.RS, _ = ann["rs"]
 		return eventMetaData
 	}
 	return nil
@@ -170,4 +174,7 @@ type EventMetaData struct {
 	Reason            string    `json:"reason"`
 	Message           string    `json:"message"`
 	UID               types.UID `json:"uid"`
+	PipelineName      string    `json:"pipelineName"`
+	ReleaseVersion    string    `json:"releaseVersion"`
+	RS                string    `json:"old"`
 }
