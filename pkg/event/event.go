@@ -40,6 +40,9 @@ type Event struct {
 	ResourceRevision  string    `json:"resourceRevision"`
 	CreationTimeStamp v1.Time   `json:"creationTimeStamp"`
 	UID               types.UID `json:"uid"`
+	PipelineName      string    `json:"pipelineName"`
+	ReleaseVersion    string    `json:"releaseVersion"`
+	RS                string    `json:"rs"`
 }
 
 var m = map[string]string{
@@ -113,6 +116,9 @@ func New(obj interface{}, action string) Event {
 		kbEvent.CreationTimeStamp = eventMetaData.CreationTimeStamp
 		kbEvent.Name = eventMetaData.Name
 		kbEvent.UID = eventMetaData.UID
+		kbEvent.PipelineName = eventMetaData.PipelineName
+		kbEvent.ReleaseVersion = eventMetaData.ReleaseVersion
+		kbEvent.RS = eventMetaData.RS
 	}
 	return kbEvent
 }
@@ -176,5 +182,5 @@ type EventMetaData struct {
 	UID               types.UID `json:"uid"`
 	PipelineName      string    `json:"pipelineName"`
 	ReleaseVersion    string    `json:"releaseVersion"`
-	RS                string    `json:"old"`
+	RS                string    `json:"rs"`
 }
