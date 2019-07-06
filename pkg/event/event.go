@@ -42,7 +42,7 @@ type Event struct {
 	UID               types.UID `json:"uid"`
 	PipelineName      string    `json:"pipelineName"`
 	ReleaseVersion    string    `json:"releaseVersion"`
-	RS                string    `json:"rs"`
+	Gen               string    `json:"gen"`
 }
 
 var m = map[string]string{
@@ -118,7 +118,7 @@ func New(obj interface{}, action string) Event {
 		kbEvent.UID = eventMetaData.UID
 		kbEvent.PipelineName = eventMetaData.PipelineName
 		kbEvent.ReleaseVersion = eventMetaData.ReleaseVersion
-		kbEvent.RS = eventMetaData.RS
+		kbEvent.Gen = eventMetaData.Gen
 	}
 	return kbEvent
 }
@@ -164,7 +164,7 @@ func getRolloutEventMetadata(event *api_v1.Event) *EventMetaData {
 		ann := event.Annotations
 		eventMetaData.PipelineName, _ = ann["pipelineName"]
 		eventMetaData.ReleaseVersion, _ = ann["releaseVersion"]
-		eventMetaData.RS, _ = ann["rs"]
+		eventMetaData.Gen, _ = ann["gen"]
 		return eventMetaData
 	}
 	return nil
@@ -182,5 +182,5 @@ type EventMetaData struct {
 	UID               types.UID `json:"uid"`
 	PipelineName      string    `json:"pipelineName"`
 	ReleaseVersion    string    `json:"releaseVersion"`
-	RS                string    `json:"rs"`
+	Gen               string    `json:"gen"`
 }
