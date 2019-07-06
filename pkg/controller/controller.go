@@ -18,6 +18,7 @@ package controller
 
 import (
 	"fmt"
+	"github.com/argoproj/argo/workflow/util"
 	"os"
 	"os/signal"
 	"syscall"
@@ -513,4 +514,27 @@ func (c *Controller) processItem(newEvent Event) error {
 		return nil
 	}
 	return nil
+}
+
+func TestInformerCache() {
+	informer := util.NewWorkflowInformer(nil, "default", 0, nil)
+
+	stopper := make(chan struct{})
+	//defer close(stopper)
+
+	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		// When a new wf gets created
+		AddFunc: func(obj interface{}) {
+			panic("not implemented")
+		},
+		// When a wf gets updated
+		UpdateFunc: func(interface{}, interface{}) {
+			panic("not implemented")
+		},
+		// When a wf gets deleted
+		DeleteFunc: func(interface{}) {
+			panic("not implemented")
+		},
+	})
+	go informer.Run(stopper)
 }

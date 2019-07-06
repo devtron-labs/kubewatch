@@ -26,6 +26,14 @@
   version = "v1.0.4"
 
 [[projects]]
+  digest = "1:5c87e9296f0c45510b26946a6488a900385dcf74ea3d807fa5de8d7765cc847d"
+  name = "github.com/argoproj/argo"
+  packages = ["."]
+  pruneopts = ""
+  revision = "88fcc70dcf6e60697e6716edc7464a403c49b27e"
+  version = "v2.3.0"
+
+[[projects]]
   digest = "1:56c130d885a4aacae1dd9c7b71cfe39912c7ebc1ff7d2b46083c8812996dc43b"
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
@@ -587,6 +595,7 @@
   analyzer-version = 1
   input-imports = [
     "github.com/Sirupsen/logrus",
+    "github.com/argoproj/argo",
     "github.com/nlopes/slack",
     "github.com/spf13/cobra",
     "github.com/spf13/viper",
@@ -599,6 +608,7 @@
     "k8s.io/api/extensions/v1beta1",
     "k8s.io/apimachinery/pkg/apis/meta/v1",
     "k8s.io/apimachinery/pkg/runtime",
+    "k8s.io/apimachinery/pkg/types",
     "k8s.io/apimachinery/pkg/util/runtime",
     "k8s.io/apimachinery/pkg/util/wait",
     "k8s.io/apimachinery/pkg/watch",
