@@ -19,7 +19,7 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 	"github.com/bitnami-labs/kubewatch/config"
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 )
 
 // slackConfigCmd represents the slack subcommand

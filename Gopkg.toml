@@ -21,7 +21,7 @@
 #  version = "2.4.0"
 
 [[override]]
-  name = "github.com/Sirupsen/logrus"
+  name = "github.com/sirupsen/logrus"
   version = "1.4.2"
 
 
@@ -46,19 +46,22 @@
   branch = "v2"
   name = "gopkg.in/yaml.v2"
 
-[[constraint]]
+[[override]]
   #revision = "11147472b7c934c474a2c484af3c0c5210b7a3af"
   branch = "release-1.12"
   name = "k8s.io/api"
 
-[[constraint]]
+[[override]]
   #revision = "180eddb345a5be3a157cea1c624700ad5bd27b8f"
+  #version ="1.12.0"
   branch = "release-1.12"
   name = "k8s.io/apimachinery"
 
 [[override]]
   name = "k8s.io/client-go"
-  version="release-9.0"
+  branch = "release-9.0"
+
+  #version="v1.12.0"
   #revision = "78700dec6369ba22221b72770783300f143df150"
 
 
