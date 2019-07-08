@@ -53,6 +53,14 @@
   revision = "b94327e4ce8fabfc3819d4d3fdb01aab7c39bf87"
 
 [[projects]]
+  digest = "1:89222a85b884e2ab26ed316b4e2a186cd5068800b1c6e7c58573e69bd4f3c2a8"
+  name = "github.com/caarlos0/env"
+  packages = ["."]
+  pruneopts = ""
+  revision = "4bd75bf16b9ef8c1383109b5e4d931bd72c3b6d0"
+  version = "v6.0.0"
+
+[[projects]]
   digest = "1:5cf8a8393124ac3d5632a8c51d08d8ff2aa29b6b328306cb8b7560a7e83cf760"
   name = "github.com/colinmarc/hdfs"
   packages = [
@@ -843,6 +851,7 @@
   analyzer-version = 1
   input-imports = [
     "github.com/argoproj/argo/workflow/util",
+    "github.com/caarlos0/env",
     "github.com/nlopes/slack",
     "github.com/sirupsen/logrus",
     "github.com/spf13/cobra",
