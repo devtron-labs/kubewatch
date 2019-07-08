@@ -17,18 +17,21 @@ limitations under the License.
 package controller
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/argoproj/argo/workflow/util"
+	"github.com/caarlos0/env"
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
-	"github.com/sirupsen/logrus"
 	"github.com/bitnami-labs/kubewatch/config"
 	"github.com/bitnami-labs/kubewatch/pkg/event"
 	"github.com/bitnami-labs/kubewatch/pkg/handlers"
 	"github.com/bitnami-labs/kubewatch/pkg/utils"
+	"github.com/sirupsen/logrus"
 
 	apps_v1beta1 "k8s.io/api/apps/v1beta1"
 	batch_v1 "k8s.io/api/batch/v1"
@@ -57,6 +60,11 @@ type Event struct {
 	resourceType  string
 }
 
+type WorkflowUpdateReq struct {
+	Key  string `json:"key"`
+	Type string `json:"type"`
+}
+
 // Controller object
 type Controller struct {
 	logger       *logrus.Entry
@@ -66,14 +74,21 @@ type Controller struct {
 	eventHandler handlers.Handler
 }
 
+type CiConfig struct {
+	DefaultNamespace string `env:"DEFAULT_NAMESPACE" envDefault:"default"`
+}
+
 func Start(conf *config.Config, eventHandler handlers.Handler) {
 	var kubeClient kubernetes.Interface
-	_, err := rest.InClusterConfig()
+	cfg, err := rest.InClusterConfig()
 	if err != nil {
 		kubeClient = utils.GetClientOutOfCluster()
 	} else {
 		kubeClient = utils.GetClient()
 	}
+
+	runWorkflowInformer(cfg)
+
 	if conf.Resource.Pod {
 		informer := cache.NewSharedIndexInformer(
 			&cache.ListWatch{
@@ -516,25 +531,42 @@ func (c *Controller) processItem(newEvent Event) error {
 	return nil
 }
 
-func TestInformerCache() {
-	informer := util.NewWorkflowInformer(nil, "default", 0, nil)
+func runWorkflowInformer(cfg *rest.Config) {
+	ciCfg := &CiConfig{}
+	err := env.Parse(ciCfg)
+	if err != nil {
+		return
+	}
 
-	stopper := make(chan struct{})
-	//defer close(stopper)
-
+	informer := util.NewWorkflowInformer(cfg, ciCfg.DefaultNamespace, 0, nil)
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		// When a new wf gets created
-		AddFunc: func(obj interface{}) {
-			panic("not implemented")
-		},
+		AddFunc: func(obj interface{}) {},
 		// When a wf gets updated
-		UpdateFunc: func(interface{}, interface{}) {
-			panic("not implemented")
+		UpdateFunc: func(oldWf interface{}, newWf interface{}) {
+			key, err := cache.MetaNamespaceKeyFunc(newWf)
+			if err != nil {
+				log.Println("err", err)
+			}
+
+			WorkflowUpdateReq := WorkflowUpdateReq {
+				Key: key,
+				Type: "update",
+			}
+			jsonBody, err := json.Marshal(WorkflowUpdateReq)
+			if err != nil {
+				log.Println("err", err)
+				return
+			}
+			var reqBody = []byte(jsonBody)
+			log.Println(reqBody)
+			// TODO: Implement Nats producer
+
 		},
 		// When a wf gets deleted
-		DeleteFunc: func(interface{}) {
-			panic("not implemented")
-		},
+		DeleteFunc: func(wf interface{}) {},
 	})
-	go informer.Run(stopper)
+	stopCh := make(chan struct{})
+	defer close(stopCh)
+	go informer.Run(stopCh)
 }
