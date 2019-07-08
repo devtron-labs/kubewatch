@@ -154,7 +154,9 @@
   digest = "1:fd53b471edb4c28c7d297f617f4da0d33402755f58d6301e7ca1197ef0a90937"
   name = "github.com/gogo/protobuf"
   packages = [
+    "gogoproto",
     "proto",
+    "protoc-gen-gogo/descriptor",
     "sortkeys",
   ]
   pruneopts = ""
@@ -364,6 +366,50 @@
   version = "1.0.1"
 
 [[projects]]
+  digest = "1:bfb5629010b19c1dbe14a4c58942ab70f536d284e4db6580a661f9f542daf5cf"
+  name = "github.com/nats-io/nats.go"
+  packages = [
+    ".",
+    "encoders/builtin",
+    "util",
+  ]
+  pruneopts = ""
+  revision = "e2837a2879e82886f6e21715e3a0217fdc46d370"
+  version = "v1.8.1"
+
+[[projects]]
+  digest = "1:0006112541eed60bdfa279c8965c038865f05a677d980305dae7a0eec5bd133c"
+  name = "github.com/nats-io/nkeys"
+  packages = ["."]
+  pruneopts = ""
+  revision = "1546a3320a8f195a5b5c84aef8309377c2e411d5"
+  version = "v0.0.2"
+
+[[projects]]
+  digest = "1:9abd194bb617fe4df66607ca59812ca91caeb2053c8c9869d3507939bb63cc0b"
+  name = "github.com/nats-io/nuid"
+  packages = ["."]
+  pruneopts = ""
+  revision = "4b96681fa6d28dd0ab5fe79bac63b3a493d9ee94"
+  version = "v1.0.1"
+
+[[projects]]
+  digest = "1:f66b8dd5f3e23d63f75f06e80287a8e7954909ec530eb08a6a9ca2845fad20aa"
+  name = "github.com/nats-io/stan"
+  packages = ["."]
+  pruneopts = ""
+  revision = "c5efdc3e2330fb9c81f34082d0c04a8de817748a"
+  version = "v0.5.0"
+
+[[projects]]
+  digest = "1:f66b8dd5f3e23d63f75f06e80287a8e7954909ec530eb08a6a9ca2845fad20aa"
+  name = "github.com/nats-io/stan.go"
+  packages = ["pb"]
+  pruneopts = ""
+  revision = "c5efdc3e2330fb9c81f34082d0c04a8de817748a"
+  version = "v0.5.0"
+
+[[projects]]
   digest = "1:53f0ca8536bff15e4974b90def20012f61ef4fdb40b8b2712fa09c2820e53974"
   name = "github.com/nlopes/slack"
   packages = ["."]
@@ -490,6 +536,8 @@
   digest = "1:086760278d762dbb0e9a26e09b57f04c89178c86467d8d94fae47d64c222f328"
   name = "golang.org/x/crypto"
   packages = [
+    "ed25519",
+    "ed25519/internal/edwards25519",
     "md4",
     "pbkdf2",
     "ssh/terminal",
@@ -852,6 +900,7 @@
   input-imports = [
     "github.com/argoproj/argo/workflow/util",
     "github.com/caarlos0/env",
+    "github.com/nats-io/stan",
     "github.com/nlopes/slack",
     "github.com/sirupsen/logrus",
     "github.com/spf13/cobra",

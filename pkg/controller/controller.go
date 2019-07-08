@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"github.com/argoproj/argo/workflow/util"
 	"github.com/caarlos0/env"
+	"github.com/nats-io/nats.go"
+	"github.com/nats-io/stan"
 	"log"
 	"os"
 	"os/signal"
@@ -74,9 +76,21 @@ type Controller struct {
 	eventHandler handlers.Handler
 }
 
+type PubSubClient struct {
+	Conn   stan.Conn
+}
+
+type PubSubConfig struct {
+	NatsServerHost string `env:"NATS_SERVER_HOST" envDefault:"nats://example-nats.default:4222"`
+	ClusterId      string `env:"CLUSTER_ID" envDefault:"example-stan"`
+	ClientId       string `env:"CLIENT_ID" envDefault:"kubewatch"`
+}
+
 type CiConfig struct {
 	DefaultNamespace string `env:"DEFAULT_NAMESPACE" envDefault:"default"`
 }
+
+const workflowStatusUpdate = "WORKFLOW_STATUS_UPDATE"
 
 func Start(conf *config.Config, eventHandler handlers.Handler) {
 	var kubeClient kubernetes.Interface
@@ -86,44 +100,6 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 	} else {
 		kubeClient = utils.GetClient()
 	}
-
-	ciCfg := &CiConfig{}
-	err = env.Parse(ciCfg)
-	if err != nil {
-		return
-	}
-
-	informer := util.NewWorkflowInformer(cfg, ciCfg.DefaultNamespace, 0, nil)
-	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		// When a new wf gets created
-		AddFunc: func(obj interface{}) {},
-		// When a wf gets updated
-		UpdateFunc: func(oldWf interface{}, newWf interface{}) {
-			key, err := cache.MetaNamespaceKeyFunc(newWf)
-			if err != nil {
-				log.Println("err", err)
-			}
-
-			WorkflowUpdateReq := WorkflowUpdateReq {
-				Key: key,
-				Type: "update",
-			}
-			jsonBody, err := json.Marshal(WorkflowUpdateReq)
-			if err != nil {
-				log.Println("err", err)
-				return
-			}
-			var reqBody = []byte(jsonBody)
-			log.Println(reqBody)
-			// TODO: Implement Nats producer
-
-		},
-		// When a wf gets deleted
-		DeleteFunc: func(wf interface{}) {},
-	})
-	stopCh := make(chan struct{})
-	defer close(stopCh)
-	go informer.Run(stopCh)
 
 	if conf.Resource.Pod {
 		informer := cache.NewSharedIndexInformer(
@@ -411,10 +387,80 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 		go c.Run(stopCh)
 	}
 
+	client,err := NewPubSubClient()
+	if err != nil {
+		log.Println("err", err)
+		return
+	}
+
+	ciCfg := &CiConfig{}
+	err = env.Parse(ciCfg)
+	if err != nil {
+		return
+	}
+
+	informer := util.NewWorkflowInformer(cfg, ciCfg.DefaultNamespace, 0, nil)
+	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		// When a new wf gets created
+		AddFunc: func(obj interface{}) {},
+		// When a wf gets updated
+		UpdateFunc: func(oldWf interface{}, newWf interface{}) {
+			key, err := cache.MetaNamespaceKeyFunc(newWf)
+			if err != nil {
+				log.Println("err", err)
+			}
+
+			WorkflowUpdateReq := WorkflowUpdateReq {
+				Key: key,
+				Type: "update",
+			}
+			jsonBody, err := json.Marshal(WorkflowUpdateReq)
+			if err != nil {
+				log.Println("err", err)
+				return
+			}
+			var reqBody = []byte(jsonBody)
+			log.Println(reqBody)
+
+			err = client.Conn.Publish(workflowStatusUpdate, reqBody) // does not return until an ack has been received from NATS Streaming
+			if err != nil {
+				log.Println("publish err", "err", err)
+				return
+			}
+		},
+		// When a wf gets deleted
+		DeleteFunc: func(wf interface{}) {},
+	})
+	stopCh := make(chan struct{})
+	defer close(stopCh)
+	go informer.Run(stopCh)
+
 	sigterm := make(chan os.Signal, 1)
 	signal.Notify(sigterm, syscall.SIGTERM)
 	signal.Notify(sigterm, syscall.SIGINT)
 	<-sigterm
+}
+
+func NewPubSubClient() (*PubSubClient, error) {
+	cfg := &PubSubConfig{}
+	err := env.Parse(cfg)
+	if err != nil {
+		return &PubSubClient{}, err
+	}
+	nc, err := nats.Connect(cfg.NatsServerHost)
+	if err != nil {
+		log.Println("err", err)
+		return &PubSubClient{}, err
+	}
+	sc, err := stan.Connect(cfg.ClusterId, cfg.ClientId, stan.NatsConn(nc))
+	if err != nil {
+		log.Println("err", err)
+		return &PubSubClient{}, err
+	}
+	natsClient := &PubSubClient{
+		Conn:   sc,
+	}
+	return natsClient, nil
 }
 
 func newResourceController(client kubernetes.Interface, eventHandler handlers.Handler, informer cache.SharedIndexInformer, resourceType string) *Controller {
