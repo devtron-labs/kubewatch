@@ -88,7 +88,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 	}
 
 	ciCfg := &CiConfig{}
-	err := env.Parse(ciCfg)
+	err = env.Parse(ciCfg)
 	if err != nil {
 		return
 	}
