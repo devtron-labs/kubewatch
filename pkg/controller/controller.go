@@ -87,7 +87,43 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 		kubeClient = utils.GetClient()
 	}
 
-	runWorkflowInformer(cfg)
+	ciCfg := &CiConfig{}
+	err := env.Parse(ciCfg)
+	if err != nil {
+		return
+	}
+
+	informer := util.NewWorkflowInformer(cfg, ciCfg.DefaultNamespace, 0, nil)
+	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		// When a new wf gets created
+		AddFunc: func(obj interface{}) {},
+		// When a wf gets updated
+		UpdateFunc: func(oldWf interface{}, newWf interface{}) {
+			key, err := cache.MetaNamespaceKeyFunc(newWf)
+			if err != nil {
+				log.Println("err", err)
+			}
+
+			WorkflowUpdateReq := WorkflowUpdateReq {
+				Key: key,
+				Type: "update",
+			}
+			jsonBody, err := json.Marshal(WorkflowUpdateReq)
+			if err != nil {
+				log.Println("err", err)
+				return
+			}
+			var reqBody = []byte(jsonBody)
+			log.Println(reqBody)
+			// TODO: Implement Nats producer
+
+		},
+		// When a wf gets deleted
+		DeleteFunc: func(wf interface{}) {},
+	})
+	stopCh := make(chan struct{})
+	defer close(stopCh)
+	go informer.Run(stopCh)
 
 	if conf.Resource.Pod {
 		informer := cache.NewSharedIndexInformer(
@@ -529,44 +565,4 @@ func (c *Controller) processItem(newEvent Event) error {
 		return nil
 	}
 	return nil
-}
-
-func runWorkflowInformer(cfg *rest.Config) {
-	ciCfg := &CiConfig{}
-	err := env.Parse(ciCfg)
-	if err != nil {
-		return
-	}
-
-	informer := util.NewWorkflowInformer(cfg, ciCfg.DefaultNamespace, 0, nil)
-	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		// When a new wf gets created
-		AddFunc: func(obj interface{}) {},
-		// When a wf gets updated
-		UpdateFunc: func(oldWf interface{}, newWf interface{}) {
-			key, err := cache.MetaNamespaceKeyFunc(newWf)
-			if err != nil {
-				log.Println("err", err)
-			}
-
-			WorkflowUpdateReq := WorkflowUpdateReq {
-				Key: key,
-				Type: "update",
-			}
-			jsonBody, err := json.Marshal(WorkflowUpdateReq)
-			if err != nil {
-				log.Println("err", err)
-				return
-			}
-			var reqBody = []byte(jsonBody)
-			log.Println(reqBody)
-			// TODO: Implement Nats producer
-
-		},
-		// When a wf gets deleted
-		DeleteFunc: func(wf interface{}) {},
-	})
-	stopCh := make(chan struct{})
-	defer close(stopCh)
-	go informer.Run(stopCh)
 }
