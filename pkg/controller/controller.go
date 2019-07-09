@@ -24,6 +24,7 @@ import (
 	"github.com/caarlos0/env"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/stan"
+	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/tools/clientcmd"
 	"log"
 	"os"
@@ -33,12 +34,18 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/bitnami-labs/kubewatch/config"
 	"github.com/bitnami-labs/kubewatch/pkg/event"
 	"github.com/bitnami-labs/kubewatch/pkg/handlers"
 	"github.com/bitnami-labs/kubewatch/pkg/utils"
-	"github.com/sirupsen/logrus"
 
+	apps_v1beta1 "k8s.io/api/apps/v1beta1"
+	batch_v1 "k8s.io/api/batch/v1"
+	api_v1 "k8s.io/api/core/v1"
+	ext_v1beta1 "k8s.io/api/extensions/v1beta1"
+	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
@@ -89,25 +96,11 @@ type CiConfig struct {
 
 const workflowStatusUpdate = "WORKFLOW_STATUS_UPDATE"
 
-func getDevConfig() (*rest.Config, error) {
-	usr, err := user.Current()
-	if err != nil {
-		return nil, err
-	}
-	kubeconfig := flag.String("kubeconfig", filepath.Join(usr.HomeDir, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
-	flag.Parse()
-	cfg, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
-	if err != nil {
-		return nil, err
-	}
-	return cfg, nil
-}
-
 func Start(conf *config.Config, eventHandler handlers.Handler) {
-	//var kubeClient kubernetes.Interface
-	cfg, err := getDevConfig()
-	//cfg, err := rest.InClusterConfig()
-	/*if err != nil {
+	var kubeClient kubernetes.Interface
+	//cfg, err := getDevConfig()
+	cfg, err := rest.InClusterConfig()
+	if err != nil {
 		kubeClient = utils.GetClientOutOfCluster()
 	} else {
 		kubeClient = utils.GetClient()
@@ -397,7 +390,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 		defer close(stopCh)
 
 		go c.Run(stopCh)
-	}*/
+	}
 
 	client, err := NewPubSubClient()
 	if err != nil {
@@ -623,4 +616,18 @@ func (c *Controller) processItem(newEvent Event) error {
 		return nil
 	}
 	return nil
+}
+
+func getDevConfig() (*rest.Config, error) {
+	usr, err := user.Current()
+	if err != nil {
+		return nil, err
+	}
+	kubeconfig := flag.String("kubeconfig", filepath.Join(usr.HomeDir, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
+	flag.Parse()
+	cfg, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
+	if err != nil {
+		return nil, err
+	}
+	return cfg, nil
 }

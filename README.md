@@ -15,7 +15,7 @@ CLIENT_ID           |kubewatch             |
 ###CI-CONFIG
 variable Name       |Default Value         |Description
 --------------------|----------------------|------------------
-DEFAULT_NAMESPACE   |default              |
+DEFAULT_NAMESPACE   |default               |
 
 # Usage
 ```
