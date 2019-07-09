@@ -12,7 +12,7 @@ NATS_SERVER_HOST    |nats://localhost:4222 |
 CLUSTER_ID          |example-stan          |
 CLIENT_ID           |kubewatch             |
 
-CI-CONFIG
+###CI-CONFIG
 variable Name       |Default Value         |Description
 --------------------|----------------------|------------------
 DEFAULT_NAMESPACE   |default              |
