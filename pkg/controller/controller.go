@@ -18,14 +18,18 @@ package controller
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"github.com/argoproj/argo/workflow/util"
 	"github.com/caarlos0/env"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/stan"
+	"k8s.io/client-go/tools/clientcmd"
 	"log"
 	"os"
 	"os/signal"
+	"os/user"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -35,15 +39,8 @@ import (
 	"github.com/bitnami-labs/kubewatch/pkg/utils"
 	"github.com/sirupsen/logrus"
 
-	apps_v1beta1 "k8s.io/api/apps/v1beta1"
-	batch_v1 "k8s.io/api/batch/v1"
-	api_v1 "k8s.io/api/core/v1"
-	ext_v1beta1 "k8s.io/api/extensions/v1beta1"
-	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
@@ -56,10 +53,10 @@ var serverStartTime time.Time
 
 // Event indicate the informerEvent
 type Event struct {
-	key           string
-	eventType     string
-	namespace     string
-	resourceType  string
+	key          string
+	eventType    string
+	namespace    string
+	resourceType string
 }
 
 type WorkflowUpdateReq struct {
@@ -77,11 +74,11 @@ type Controller struct {
 }
 
 type PubSubClient struct {
-	Conn   stan.Conn
+	Conn stan.Conn
 }
 
 type PubSubConfig struct {
-	NatsServerHost string `env:"NATS_SERVER_HOST" envDefault:"nats://example-nats.default:4222"`
+	NatsServerHost string `env:"NATS_SERVER_HOST" envDefault:"nats://localhost:4222"`
 	ClusterId      string `env:"CLUSTER_ID" envDefault:"example-stan"`
 	ClientId       string `env:"CLIENT_ID" envDefault:"kubewatch"`
 }
@@ -92,10 +89,25 @@ type CiConfig struct {
 
 const workflowStatusUpdate = "WORKFLOW_STATUS_UPDATE"
 
-func Start(conf *config.Config, eventHandler handlers.Handler) {
-	var kubeClient kubernetes.Interface
-	cfg, err := rest.InClusterConfig()
+func getDevConfig() (*rest.Config, error) {
+	usr, err := user.Current()
 	if err != nil {
+		return nil, err
+	}
+	kubeconfig := flag.String("kubeconfig", filepath.Join(usr.HomeDir, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
+	flag.Parse()
+	cfg, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
+	if err != nil {
+		return nil, err
+	}
+	return cfg, nil
+}
+
+func Start(conf *config.Config, eventHandler handlers.Handler) {
+	//var kubeClient kubernetes.Interface
+	cfg, err := getDevConfig()
+	//cfg, err := rest.InClusterConfig()
+	/*if err != nil {
 		kubeClient = utils.GetClientOutOfCluster()
 	} else {
 		kubeClient = utils.GetClient()
@@ -385,9 +397,9 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 		defer close(stopCh)
 
 		go c.Run(stopCh)
-	}
+	}*/
 
-	client,err := NewPubSubClient()
+	client, err := NewPubSubClient()
 	if err != nil {
 		log.Println("err", err)
 		return
@@ -410,8 +422,8 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 				log.Println("err", err)
 			}
 
-			WorkflowUpdateReq := WorkflowUpdateReq {
-				Key: key,
+			WorkflowUpdateReq := WorkflowUpdateReq{
+				Key:  key,
 				Type: "update",
 			}
 			jsonBody, err := json.Marshal(WorkflowUpdateReq)
@@ -458,7 +470,7 @@ func NewPubSubClient() (*PubSubClient, error) {
 		return &PubSubClient{}, err
 	}
 	natsClient := &PubSubClient{
-		Conn:   sc,
+		Conn: sc,
 	}
 	return natsClient, nil
 }
