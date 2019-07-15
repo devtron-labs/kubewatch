@@ -425,7 +425,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 				return
 			}
 			var reqBody = []byte(jsonBody)
-			log.Println(reqBody)
+			log.Println(string(reqBody))
 
 			err = client.Conn.Publish(workflowStatusUpdate, reqBody) // does not return until an ack has been received from NATS Streaming
 			if err != nil {
