@@ -407,7 +407,9 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 	informer := util.NewWorkflowInformer(cfg, ciCfg.DefaultNamespace, 0, nil)
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		// When a new wf gets created
-		AddFunc: func(obj interface{}) {},
+		AddFunc: func(obj interface{}) {
+			log.Println("workflow created")
+		},
 		// When a wf gets updated
 		UpdateFunc: func(oldWf interface{}, newWf interface{}) {
 			key, err := cache.MetaNamespaceKeyFunc(newWf)
@@ -425,6 +427,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 				return
 			}
 			var reqBody = []byte(jsonBody)
+			log.Println("sending workflow update event nats ",string(reqBody))
 			log.Println(string(reqBody))
 
 			err = client.Conn.Publish(workflowStatusUpdate, reqBody) // does not return until an ack has been received from NATS Streaming
