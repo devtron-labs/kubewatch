@@ -24,6 +24,7 @@ import (
 	"github.com/caarlos0/env"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/stan"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/tools/clientcmd"
 	"log"
@@ -412,25 +413,18 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 		},
 		// When a wf gets updated
 		UpdateFunc: func(oldWf interface{}, newWf interface{}) {
-			key, err := cache.MetaNamespaceKeyFunc(newWf)
-			if err != nil {
-				log.Println("err", err)
-			}
+			log.Println("workflow update detected")
 
-			WorkflowUpdateReq := WorkflowUpdateReq{
-				Key:  key,
-				Type: "update",
-			}
-			jsonBody, err := json.Marshal(WorkflowUpdateReq)
+			workflow := newWf.(*unstructured.Unstructured).Object["status"]
+			wfJson, err := json.Marshal(workflow)
 			if err != nil {
 				log.Println("err", err)
 				return
 			}
-			var reqBody = []byte(jsonBody)
-			log.Println("sending workflow update event nats ",string(reqBody))
-			log.Println(string(reqBody))
+			log.Println("sending workflow update event ", string(wfJson))
+			var reqBody = []byte(wfJson)
 
-			err = client.Conn.Publish(workflowStatusUpdate, reqBody) // does not return until an ack has been received from NATS Streaming
+			err = client.Conn.Publish(workflowStatusUpdate, reqBody)
 			if err != nil {
 				log.Println("publish err", "err", err)
 				return
