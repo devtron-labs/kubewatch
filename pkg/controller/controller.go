@@ -414,20 +414,21 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 		// When a wf gets updated
 		UpdateFunc: func(oldWf interface{}, newWf interface{}) {
 			log.Println("workflow update detected")
+			if workflow, ok := newWf.(*unstructured.Unstructured).Object["status"]; ok {
+				wfJson, err := json.Marshal(workflow)
+				if err != nil {
+					log.Println("err", err)
+					return
+				}
+				log.Println("sending workflow update event ", string(wfJson))
+				var reqBody = []byte(wfJson)
 
-			workflow := newWf.(*unstructured.Unstructured).Object["status"]
-			wfJson, err := json.Marshal(workflow)
-			if err != nil {
-				log.Println("err", err)
-				return
-			}
-			log.Println("sending workflow update event ", string(wfJson))
-			var reqBody = []byte(wfJson)
-
-			err = client.Conn.Publish(workflowStatusUpdate, reqBody)
-			if err != nil {
-				log.Println("publish err", "err", err)
-				return
+				err = client.Conn.Publish(workflowStatusUpdate, reqBody)
+				if err != nil {
+					log.Println("publish err", "err", err)
+					return
+				}
+				log.Println("workflow update sent")
 			}
 		},
 		// When a wf gets deleted
