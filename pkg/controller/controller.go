@@ -450,7 +450,7 @@ func NewPubSubClient() (*PubSubClient, error) {
 	if err != nil {
 		return &PubSubClient{}, err
 	}
-	nc, err := nats.Connect(cfg.NatsServerHost)
+	nc, err := nats.Connect(cfg.NatsServerHost, nats.ReconnectWait(5*time.Second), nats.MaxReconnects(100))
 	if err != nil {
 		log.Println("err", err)
 		return &PubSubClient{}, err
