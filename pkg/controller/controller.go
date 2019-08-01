@@ -92,7 +92,7 @@ type PubSubConfig struct {
 }
 
 type CiConfig struct {
-	DefaultNamespace string `env:"DEFAULT_NAMESPACE" envDefault:"default"`
+	DefaultNamespace string `env:"DEFAULT_NAMESPACE" envDefault:"devtron-ci"`
 }
 
 const workflowStatusUpdate = "WORKFLOW_STATUS_UPDATE"
