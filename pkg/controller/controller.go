@@ -20,11 +20,19 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	v1alpha12 "github.com/argoproj/argo-cd/pkg/apis/application/v1alpha1"
+	"github.com/argoproj/argo-cd/pkg/client/clientset/versioned"
+	"github.com/argoproj/argo-cd/pkg/client/informers/externalversions/application/v1alpha1"
 	"github.com/argoproj/argo/workflow/util"
 	"github.com/caarlos0/env"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/stan"
+	v13 "k8s.io/api/batch/v1"
+	"k8s.io/api/core/v1"
+	"k8s.io/api/extensions/v1beta1"
+	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/tools/clientcmd"
 	"log"
@@ -41,12 +49,7 @@ import (
 	"github.com/bitnami-labs/kubewatch/pkg/utils"
 	"github.com/sirupsen/logrus"
 
-	apps_v1beta1 "k8s.io/api/apps/v1beta1"
-	batch_v1 "k8s.io/api/batch/v1"
-	api_v1 "k8s.io/api/core/v1"
-	ext_v1beta1 "k8s.io/api/extensions/v1beta1"
-	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
+	_ "github.com/argoproj/argo-cd/util/session"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
@@ -86,20 +89,27 @@ type PubSubClient struct {
 }
 
 type PubSubConfig struct {
-	NatsServerHost string `env:"NATS_SERVER_HOST" envDefault:"nats://devtron-nats.devtroncd:4222"`
+	NatsServerHost string `env:"NATS_SERVER_HOST" envDefault:"nats://localhost:4222"`
 	ClusterId      string `env:"CLUSTER_ID" envDefault:"devtron-stan"`
 	ClientId       string `env:"CLIENT_ID" envDefault:"kubewatch"`
 }
 
 type CiConfig struct {
 	DefaultNamespace string `env:"DEFAULT_NAMESPACE" envDefault:"devtron-ci"`
+	CiInformer       bool   `env:"CI_INFORMER" envDefault:"true"`
+}
+
+type AcdConfig struct {
+	ACDNamespace string `env:"ACD_NAMESPACE" envDefault:"devtroncd"`
+	ACDInformer  bool   `env:"ACD_INFORMER" envDefault:"true"`
 }
 
 const workflowStatusUpdate = "WORKFLOW_STATUS_UPDATE"
+const appStatusUpdate = "APPLICATION_STATUS_UPDATE"
 
 func Start(conf *config.Config, eventHandler handlers.Handler) {
 	var kubeClient kubernetes.Interface
-	//cfg, err := getDevConfig()
+	//cfg, _ := getDevConfig()
 	cfg, err := rest.InClusterConfig()
 	if err != nil {
 		kubeClient = utils.GetClientOutOfCluster()
@@ -110,14 +120,14 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 	if conf.Resource.Pod {
 		informer := cache.NewSharedIndexInformer(
 			&cache.ListWatch{
-				ListFunc: func(options meta_v1.ListOptions) (runtime.Object, error) {
+				ListFunc: func(options v12.ListOptions) (runtime.Object, error) {
 					return kubeClient.CoreV1().Pods(conf.Namespace).List(options)
 				},
-				WatchFunc: func(options meta_v1.ListOptions) (watch.Interface, error) {
+				WatchFunc: func(options v12.ListOptions) (watch.Interface, error) {
 					return kubeClient.CoreV1().Pods(conf.Namespace).Watch(options)
 				},
 			},
-			&api_v1.Pod{},
+			&v1.Pod{},
 			0, //Skip resync
 			cache.Indexers{},
 		)
@@ -132,14 +142,14 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 	if conf.Resource.DaemonSet {
 		informer := cache.NewSharedIndexInformer(
 			&cache.ListWatch{
-				ListFunc: func(options meta_v1.ListOptions) (runtime.Object, error) {
+				ListFunc: func(options v12.ListOptions) (runtime.Object, error) {
 					return kubeClient.ExtensionsV1beta1().DaemonSets(conf.Namespace).List(options)
 				},
-				WatchFunc: func(options meta_v1.ListOptions) (watch.Interface, error) {
+				WatchFunc: func(options v12.ListOptions) (watch.Interface, error) {
 					return kubeClient.ExtensionsV1beta1().DaemonSets(conf.Namespace).Watch(options)
 				},
 			},
-			&ext_v1beta1.DaemonSet{},
+			&v1beta1.DaemonSet{},
 			0, //Skip resync
 			cache.Indexers{},
 		)
@@ -154,14 +164,14 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 	if conf.Resource.ReplicaSet {
 		informer := cache.NewSharedIndexInformer(
 			&cache.ListWatch{
-				ListFunc: func(options meta_v1.ListOptions) (runtime.Object, error) {
+				ListFunc: func(options v12.ListOptions) (runtime.Object, error) {
 					return kubeClient.ExtensionsV1beta1().ReplicaSets(conf.Namespace).List(options)
 				},
-				WatchFunc: func(options meta_v1.ListOptions) (watch.Interface, error) {
+				WatchFunc: func(options v12.ListOptions) (watch.Interface, error) {
 					return kubeClient.ExtensionsV1beta1().ReplicaSets(conf.Namespace).Watch(options)
 				},
 			},
-			&ext_v1beta1.ReplicaSet{},
+			&v1beta1.ReplicaSet{},
 			0, //Skip resync
 			cache.Indexers{},
 		)
@@ -176,14 +186,14 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 	if conf.Resource.Services {
 		informer := cache.NewSharedIndexInformer(
 			&cache.ListWatch{
-				ListFunc: func(options meta_v1.ListOptions) (runtime.Object, error) {
+				ListFunc: func(options v12.ListOptions) (runtime.Object, error) {
 					return kubeClient.CoreV1().Services(conf.Namespace).List(options)
 				},
-				WatchFunc: func(options meta_v1.ListOptions) (watch.Interface, error) {
+				WatchFunc: func(options v12.ListOptions) (watch.Interface, error) {
 					return kubeClient.CoreV1().Services(conf.Namespace).Watch(options)
 				},
 			},
-			&api_v1.Service{},
+			&v1.Service{},
 			0, //Skip resync
 			cache.Indexers{},
 		)
@@ -198,14 +208,14 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 	if conf.Resource.Deployment {
 		informer := cache.NewSharedIndexInformer(
 			&cache.ListWatch{
-				ListFunc: func(options meta_v1.ListOptions) (runtime.Object, error) {
+				ListFunc: func(options v12.ListOptions) (runtime.Object, error) {
 					return kubeClient.AppsV1beta1().Deployments(conf.Namespace).List(options)
 				},
-				WatchFunc: func(options meta_v1.ListOptions) (watch.Interface, error) {
+				WatchFunc: func(options v12.ListOptions) (watch.Interface, error) {
 					return kubeClient.AppsV1beta1().Deployments(conf.Namespace).Watch(options)
 				},
 			},
-			&apps_v1beta1.Deployment{},
+			&v1beta1.Deployment{},
 			0, //Skip resync
 			cache.Indexers{},
 		)
@@ -220,14 +230,14 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 	if conf.Resource.Namespace {
 		informer := cache.NewSharedIndexInformer(
 			&cache.ListWatch{
-				ListFunc: func(options meta_v1.ListOptions) (runtime.Object, error) {
+				ListFunc: func(options v12.ListOptions) (runtime.Object, error) {
 					return kubeClient.CoreV1().Namespaces().List(options)
 				},
-				WatchFunc: func(options meta_v1.ListOptions) (watch.Interface, error) {
+				WatchFunc: func(options v12.ListOptions) (watch.Interface, error) {
 					return kubeClient.CoreV1().Namespaces().Watch(options)
 				},
 			},
-			&api_v1.Namespace{},
+			&v1.Namespace{},
 			0, //Skip resync
 			cache.Indexers{},
 		)
@@ -242,14 +252,14 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 	if conf.Resource.ReplicationController {
 		informer := cache.NewSharedIndexInformer(
 			&cache.ListWatch{
-				ListFunc: func(options meta_v1.ListOptions) (runtime.Object, error) {
+				ListFunc: func(options v12.ListOptions) (runtime.Object, error) {
 					return kubeClient.CoreV1().ReplicationControllers(conf.Namespace).List(options)
 				},
-				WatchFunc: func(options meta_v1.ListOptions) (watch.Interface, error) {
+				WatchFunc: func(options v12.ListOptions) (watch.Interface, error) {
 					return kubeClient.CoreV1().ReplicationControllers(conf.Namespace).Watch(options)
 				},
 			},
-			&api_v1.ReplicationController{},
+			&v1.ReplicationController{},
 			0, //Skip resync
 			cache.Indexers{},
 		)
@@ -264,14 +274,14 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 	if conf.Resource.Job {
 		informer := cache.NewSharedIndexInformer(
 			&cache.ListWatch{
-				ListFunc: func(options meta_v1.ListOptions) (runtime.Object, error) {
+				ListFunc: func(options v12.ListOptions) (runtime.Object, error) {
 					return kubeClient.BatchV1().Jobs(conf.Namespace).List(options)
 				},
-				WatchFunc: func(options meta_v1.ListOptions) (watch.Interface, error) {
+				WatchFunc: func(options v12.ListOptions) (watch.Interface, error) {
 					return kubeClient.BatchV1().Jobs(conf.Namespace).Watch(options)
 				},
 			},
-			&batch_v1.Job{},
+			&v13.Job{},
 			0, //Skip resync
 			cache.Indexers{},
 		)
@@ -286,14 +296,14 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 	if conf.Resource.PersistentVolume {
 		informer := cache.NewSharedIndexInformer(
 			&cache.ListWatch{
-				ListFunc: func(options meta_v1.ListOptions) (runtime.Object, error) {
+				ListFunc: func(options v12.ListOptions) (runtime.Object, error) {
 					return kubeClient.CoreV1().PersistentVolumes().List(options)
 				},
-				WatchFunc: func(options meta_v1.ListOptions) (watch.Interface, error) {
+				WatchFunc: func(options v12.ListOptions) (watch.Interface, error) {
 					return kubeClient.CoreV1().PersistentVolumes().Watch(options)
 				},
 			},
-			&api_v1.PersistentVolume{},
+			&v1.PersistentVolume{},
 			0, //Skip resync
 			cache.Indexers{},
 		)
@@ -308,14 +318,14 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 	if conf.Resource.Secret {
 		informer := cache.NewSharedIndexInformer(
 			&cache.ListWatch{
-				ListFunc: func(options meta_v1.ListOptions) (runtime.Object, error) {
+				ListFunc: func(options v12.ListOptions) (runtime.Object, error) {
 					return kubeClient.CoreV1().Secrets(conf.Namespace).List(options)
 				},
-				WatchFunc: func(options meta_v1.ListOptions) (watch.Interface, error) {
+				WatchFunc: func(options v12.ListOptions) (watch.Interface, error) {
 					return kubeClient.CoreV1().Secrets(conf.Namespace).Watch(options)
 				},
 			},
-			&api_v1.Secret{},
+			&v1.Secret{},
 			0, //Skip resync
 			cache.Indexers{},
 		)
@@ -330,14 +340,14 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 	if conf.Resource.ConfigMap {
 		informer := cache.NewSharedIndexInformer(
 			&cache.ListWatch{
-				ListFunc: func(options meta_v1.ListOptions) (runtime.Object, error) {
+				ListFunc: func(options v12.ListOptions) (runtime.Object, error) {
 					return kubeClient.CoreV1().ConfigMaps(conf.Namespace).List(options)
 				},
-				WatchFunc: func(options meta_v1.ListOptions) (watch.Interface, error) {
+				WatchFunc: func(options v12.ListOptions) (watch.Interface, error) {
 					return kubeClient.CoreV1().ConfigMaps(conf.Namespace).Watch(options)
 				},
 			},
-			&api_v1.ConfigMap{},
+			&v1.ConfigMap{},
 			0, //Skip resync
 			cache.Indexers{},
 		)
@@ -352,14 +362,14 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 	if conf.Resource.Ingress {
 		informer := cache.NewSharedIndexInformer(
 			&cache.ListWatch{
-				ListFunc: func(options meta_v1.ListOptions) (runtime.Object, error) {
+				ListFunc: func(options v12.ListOptions) (runtime.Object, error) {
 					return kubeClient.ExtensionsV1beta1().Ingresses(conf.Namespace).List(options)
 				},
-				WatchFunc: func(options meta_v1.ListOptions) (watch.Interface, error) {
+				WatchFunc: func(options v12.ListOptions) (watch.Interface, error) {
 					return kubeClient.ExtensionsV1beta1().Ingresses(conf.Namespace).Watch(options)
 				},
 			},
-			&ext_v1beta1.Ingress{},
+			&v1beta1.Ingress{},
 			0, //Skip resync
 			cache.Indexers{},
 		)
@@ -374,14 +384,14 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 	if conf.Resource.Events {
 		informer := cache.NewSharedIndexInformer(
 			&cache.ListWatch{
-				ListFunc: func(options meta_v1.ListOptions) (runtime.Object, error) {
+				ListFunc: func(options v12.ListOptions) (runtime.Object, error) {
 					return kubeClient.CoreV1().Events(conf.Namespace).List(options)
 				},
-				WatchFunc: func(options meta_v1.ListOptions) (watch.Interface, error) {
+				WatchFunc: func(options v12.ListOptions) (watch.Interface, error) {
 					return kubeClient.CoreV1().Events(conf.Namespace).Watch(options)
 				},
 			},
-			&api_v1.Event{},
+			&v1.Event{},
 			0, //Skip resync
 			cache.Indexers{},
 		)
@@ -405,38 +415,97 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 		return
 	}
 
-	informer := util.NewWorkflowInformer(cfg, ciCfg.DefaultNamespace, 0, nil)
-	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		// When a new wf gets created
-		AddFunc: func(obj interface{}) {
-			log.Println("workflow created")
-		},
-		// When a wf gets updated
-		UpdateFunc: func(oldWf interface{}, newWf interface{}) {
-			log.Println("workflow update detected")
-			if workflow, ok := newWf.(*unstructured.Unstructured).Object["status"]; ok {
-				wfJson, err := json.Marshal(workflow)
-				if err != nil {
-					log.Println("err", err)
-					return
-				}
-				log.Println("sending workflow update event ", string(wfJson))
-				var reqBody = []byte(wfJson)
+	if ciCfg.CiInformer {
+		informer := util.NewWorkflowInformer(cfg, ciCfg.DefaultNamespace, 0, nil)
+		informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+			// When a new wf gets created
+			AddFunc: func(obj interface{}) {
+				log.Println("workflow created")
+			},
+			// When a wf gets updated
+			UpdateFunc: func(oldWf interface{}, newWf interface{}) {
+				log.Println("workflow update detected")
+				if workflow, ok := newWf.(*unstructured.Unstructured).Object["status"]; ok {
+					wfJson, err := json.Marshal(workflow)
+					if err != nil {
+						log.Println("err", err)
+						return
+					}
+					log.Println("sending workflow update event ", string(wfJson))
+					var reqBody = []byte(wfJson)
 
-				err = client.Conn.Publish(workflowStatusUpdate, reqBody)
-				if err != nil {
-					log.Println("publish err", "err", err)
-					return
+					err = client.Conn.Publish(workflowStatusUpdate, reqBody)
+					if err != nil {
+						log.Println("publish err", "err", err)
+						return
+					}
+					log.Println("workflow update sent")
 				}
-				log.Println("workflow update sent")
-			}
-		},
-		// When a wf gets deleted
-		DeleteFunc: func(wf interface{}) {},
-	})
-	stopCh := make(chan struct{})
-	defer close(stopCh)
-	go informer.Run(stopCh)
+			},
+			// When a wf gets deleted
+			DeleteFunc: func(wf interface{}) {},
+		})
+
+		stopCh := make(chan struct{})
+		defer close(stopCh)
+		go informer.Run(stopCh)
+	}
+
+	acdCfg := &AcdConfig{}
+	err = env.Parse(acdCfg)
+	if err != nil {
+		return
+	}
+	if acdCfg.ACDInformer {
+		clientset := versioned.NewForConfigOrDie(cfg)
+		acdInformer := v1alpha1.NewApplicationInformer(clientset, acdCfg.ACDNamespace, 0, nil)
+
+		acdInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+			AddFunc: func(obj interface{}) {
+				log.Println("app added")
+				if app, ok := obj.(*v1alpha12.Application); ok {
+					log.Println("new app detected" + app.Name + " " + app.Status.Health.Status)
+					appJson, err := json.Marshal(app)
+					if err != nil {
+						log.Println("err", err)
+						return
+					}
+					log.Println("app update event ", string(appJson))
+					var reqBody = []byte(appJson)
+					err = client.Conn.Publish(appStatusUpdate, reqBody)
+					if err != nil {
+						log.Println("publish err", "err", err)
+						return
+					}
+					log.Println("app add sent")
+				}
+			},
+			UpdateFunc: func(old interface{}, new interface{}) {
+				log.Println("app update detected")
+				if newApp, ok := new.(*v1alpha12.Application); ok {
+					log.Println("new status for app " + newApp.Name + " " + newApp.Status.Health.Status)
+					appJson, err := json.Marshal(newApp)
+					if err != nil {
+						log.Println("err", err)
+						return
+					}
+					log.Println("app update event ", string(appJson))
+					var reqBody = []byte(appJson)
+					err = client.Conn.Publish(appStatusUpdate, reqBody)
+					if err != nil {
+						log.Println("publish err", "err", err)
+						return
+					}
+					log.Println("app update sent")
+				}
+			},
+			DeleteFunc: func(obj interface{}) {},
+		})
+
+		appStopCh := make(chan struct{})
+		defer close(appStopCh)
+		go acdInformer.Run(appStopCh)
+	}
 
 	sigterm := make(chan os.Signal, 1)
 	signal.Notify(sigterm, syscall.SIGTERM)
