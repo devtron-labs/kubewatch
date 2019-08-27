@@ -17,17 +17,29 @@ limitations under the License.
 package controller
 
 import (
+	"encoding/json"
+	"flag"
 	"fmt"
+	"github.com/argoproj/argo/workflow/util"
+	"github.com/caarlos0/env"
+	"github.com/nats-io/nats.go"
+	"github.com/nats-io/stan"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/tools/clientcmd"
+	"log"
 	"os"
 	"os/signal"
+	"os/user"
+	"path/filepath"
 	"syscall"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/bitnami-labs/kubewatch/config"
 	"github.com/bitnami-labs/kubewatch/pkg/event"
 	"github.com/bitnami-labs/kubewatch/pkg/handlers"
 	"github.com/bitnami-labs/kubewatch/pkg/utils"
+	"github.com/sirupsen/logrus"
 
 	apps_v1beta1 "k8s.io/api/apps/v1beta1"
 	batch_v1 "k8s.io/api/batch/v1"
@@ -37,7 +49,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
@@ -50,10 +61,15 @@ var serverStartTime time.Time
 
 // Event indicate the informerEvent
 type Event struct {
-	key           string
-	eventType     string
-	namespace     string
-	resourceType  string
+	key          string
+	eventType    string
+	namespace    string
+	resourceType string
+}
+
+type WorkflowUpdateReq struct {
+	Key  string `json:"key"`
+	Type string `json:"type"`
 }
 
 // Controller object
@@ -65,14 +81,32 @@ type Controller struct {
 	eventHandler handlers.Handler
 }
 
+type PubSubClient struct {
+	Conn stan.Conn
+}
+
+type PubSubConfig struct {
+	NatsServerHost string `env:"NATS_SERVER_HOST" envDefault:"nats://devtron-nats.devtroncd:4222"`
+	ClusterId      string `env:"CLUSTER_ID" envDefault:"devtron-stan"`
+	ClientId       string `env:"CLIENT_ID" envDefault:"kubewatch"`
+}
+
+type CiConfig struct {
+	DefaultNamespace string `env:"DEFAULT_NAMESPACE" envDefault:"devtron-ci"`
+}
+
+const workflowStatusUpdate = "WORKFLOW_STATUS_UPDATE"
+
 func Start(conf *config.Config, eventHandler handlers.Handler) {
 	var kubeClient kubernetes.Interface
-	_, err := rest.InClusterConfig()
+	//cfg, err := getDevConfig()
+	cfg, err := rest.InClusterConfig()
 	if err != nil {
 		kubeClient = utils.GetClientOutOfCluster()
 	} else {
 		kubeClient = utils.GetClient()
 	}
+
 	if conf.Resource.Pod {
 		informer := cache.NewSharedIndexInformer(
 			&cache.ListWatch{
@@ -359,10 +393,77 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 		go c.Run(stopCh)
 	}
 
+	client, err := NewPubSubClient()
+	if err != nil {
+		log.Println("err", err)
+		return
+	}
+
+	ciCfg := &CiConfig{}
+	err = env.Parse(ciCfg)
+	if err != nil {
+		return
+	}
+
+	informer := util.NewWorkflowInformer(cfg, ciCfg.DefaultNamespace, 0, nil)
+	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		// When a new wf gets created
+		AddFunc: func(obj interface{}) {
+			log.Println("workflow created")
+		},
+		// When a wf gets updated
+		UpdateFunc: func(oldWf interface{}, newWf interface{}) {
+			log.Println("workflow update detected")
+			if workflow, ok := newWf.(*unstructured.Unstructured).Object["status"]; ok {
+				wfJson, err := json.Marshal(workflow)
+				if err != nil {
+					log.Println("err", err)
+					return
+				}
+				log.Println("sending workflow update event ", string(wfJson))
+				var reqBody = []byte(wfJson)
+
+				err = client.Conn.Publish(workflowStatusUpdate, reqBody)
+				if err != nil {
+					log.Println("publish err", "err", err)
+					return
+				}
+				log.Println("workflow update sent")
+			}
+		},
+		// When a wf gets deleted
+		DeleteFunc: func(wf interface{}) {},
+	})
+	stopCh := make(chan struct{})
+	defer close(stopCh)
+	go informer.Run(stopCh)
+
 	sigterm := make(chan os.Signal, 1)
 	signal.Notify(sigterm, syscall.SIGTERM)
 	signal.Notify(sigterm, syscall.SIGINT)
 	<-sigterm
+}
+
+func NewPubSubClient() (*PubSubClient, error) {
+	cfg := &PubSubConfig{}
+	err := env.Parse(cfg)
+	if err != nil {
+		return &PubSubClient{}, err
+	}
+	nc, err := nats.Connect(cfg.NatsServerHost, nats.ReconnectWait(5*time.Second), nats.MaxReconnects(100))
+	if err != nil {
+		log.Println("err", err)
+		return &PubSubClient{}, err
+	}
+	sc, err := stan.Connect(cfg.ClusterId, cfg.ClientId, stan.NatsConn(nc))
+	if err != nil {
+		log.Println("err", err)
+		return &PubSubClient{}, err
+	}
+	natsClient := &PubSubClient{
+		Conn: sc,
+	}
+	return natsClient, nil
 }
 
 func newResourceController(client kubernetes.Interface, eventHandler handlers.Handler, informer cache.SharedIndexInformer, resourceType string) *Controller {
@@ -513,4 +614,18 @@ func (c *Controller) processItem(newEvent Event) error {
 		return nil
 	}
 	return nil
+}
+
+func getDevConfig() (*rest.Config, error) {
+	usr, err := user.Current()
+	if err != nil {
+		return nil, err
+	}
+	kubeconfig := flag.String("kubeconfig", filepath.Join(usr.HomeDir, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
+	flag.Parse()
+	cfg, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
+	if err != nil {
+		return nil, err
+	}
+	return cfg, nil
 }

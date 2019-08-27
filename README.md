@@ -4,6 +4,19 @@
 
 **kubewatch** is a Kubernetes watcher that currently publishes notification to available collaboration hubs/notification channels. Run it in your k8s cluster, and you will get event notifications through webhooks.
 
+#### Environment variables
+### NatStreaming
+variable Name       |Default Value         |Description
+--------------------|----------------------|------------------
+NATS_SERVER_HOST    |nats://localhost:4222 |
+CLUSTER_ID          |example-stan          |
+CLIENT_ID           |kubewatch             |
+
+###CI-CONFIG
+variable Name       |Default Value         |Description
+--------------------|----------------------|------------------
+DEFAULT_NAMESPACE   |default               |
+
 # Usage
 ```
 $ kubewatch -h

@@ -20,10 +20,10 @@
 #  name = "github.com/x/y"
 #  version = "2.4.0"
 
+[[override]]
+  name = "github.com/sirupsen/logrus"
+  version = "1.4.2"
 
-[[constraint]]
-  name = "github.com/Sirupsen/logrus"
-  version = "1.0.4"
 
 [[constraint]]
   name = "github.com/nlopes/slack"
@@ -31,7 +31,8 @@
 
 [[constraint]]
   name = "github.com/spf13/cobra"
-  version = "0.0.1"
+  revision ="fe5e611709b0c57fa4a89136deaa8e1d4004d053"
+  #version = "0.0.1"
 
 [[constraint]]
   name = "github.com/spf13/viper"
@@ -45,14 +46,29 @@
   branch = "v2"
   name = "gopkg.in/yaml.v2"
 
-[[constraint]]
-  revision = "11147472b7c934c474a2c484af3c0c5210b7a3af"
+[[override]]
+  #revision = "11147472b7c934c474a2c484af3c0c5210b7a3af"
+  branch = "release-1.12"
   name = "k8s.io/api"
 
-[[constraint]]
-  revision = "180eddb345a5be3a157cea1c624700ad5bd27b8f"
+[[override]]
+  #revision = "180eddb345a5be3a157cea1c624700ad5bd27b8f"
+  #version ="1.12.0"
+  branch = "release-1.12"
   name = "k8s.io/apimachinery"
 
-[[constraint]]
+[[override]]
   name = "k8s.io/client-go"
-  revision = "78700dec6369ba22221b72770783300f143df150" 
+  branch = "release-9.0"
+
+  #version="v1.12.0"
+  #revision = "78700dec6369ba22221b72770783300f143df150"
+
+
+[[constraint]]
+  name = "github.com/argoproj/argo"
+  version = "2.3.0"
+
+[[constraint]]
+  name = "github.com/nats-io/stan"
+  version = "0.5.0"
