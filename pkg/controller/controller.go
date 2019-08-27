@@ -23,9 +23,17 @@ import (
 	v1alpha12 "github.com/argoproj/argo-cd/pkg/apis/application/v1alpha1"
 	"github.com/argoproj/argo-cd/pkg/client/clientset/versioned"
 	"github.com/argoproj/argo-cd/pkg/client/informers/externalversions/application/v1alpha1"
+	"github.com/argoproj/argo/workflow/util"
 	"github.com/caarlos0/env"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/stan"
+	v13 "k8s.io/api/batch/v1"
+	"k8s.io/api/core/v1"
+	"k8s.io/api/extensions/v1beta1"
+	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/tools/clientcmd"
 	"log"
 	"os"
@@ -81,7 +89,7 @@ type PubSubClient struct {
 }
 
 type PubSubConfig struct {
-	NatsServerHost string `env:"NATS_SERVER_HOST" envDefault:"nats://localhost:4222"`
+	NatsServerHost string `env:"NATS_SERVER_HOST" envDefault:"nats://devtron-nats.devtroncd:4222"`
 	ClusterId      string `env:"CLUSTER_ID" envDefault:"devtron-stan"`
 	ClientId       string `env:"CLIENT_ID" envDefault:"kubewatch"`
 }
@@ -100,9 +108,9 @@ const workflowStatusUpdate = "WORKFLOW_STATUS_UPDATE"
 const appStatusUpdate = "APPLICATION_STATUS_UPDATE"
 
 func Start(conf *config.Config, eventHandler handlers.Handler) {
-	//var kubeClient kubernetes.Interface
+	var kubeClient kubernetes.Interface
 	cfg, _ := getDevConfig()
-	/*cfg, err := rest.InClusterConfig()
+	cfg, err := rest.InClusterConfig()
 	if err != nil {
 		kubeClient = utils.GetClientOutOfCluster()
 	} else {
@@ -393,7 +401,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 		defer close(stopCh)
 
 		go c.Run(stopCh)
-	}*/
+	}
 
 	client, err := NewPubSubClient()
 	if err != nil {
@@ -401,7 +409,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 		return
 	}
 
-	/*ciCfg := &CiConfig{}
+	ciCfg := &CiConfig{}
 	err = env.Parse(ciCfg)
 	if err != nil {
 		return
@@ -441,7 +449,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 		stopCh := make(chan struct{})
 		defer close(stopCh)
 		go informer.Run(stopCh)
-	}*/
+	}
 
 	acdCfg := &AcdConfig{}
 	err = env.Parse(acdCfg)
