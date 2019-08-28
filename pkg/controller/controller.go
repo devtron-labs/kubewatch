@@ -109,7 +109,7 @@ const appStatusUpdate = "APPLICATION_STATUS_UPDATE"
 
 func Start(conf *config.Config, eventHandler handlers.Handler) {
 	var kubeClient kubernetes.Interface
-	cfg, _ := getDevConfig()
+	//cfg, _ := getDevConfig()
 	cfg, err := rest.InClusterConfig()
 	if err != nil {
 		kubeClient = utils.GetClientOutOfCluster()
@@ -456,7 +456,9 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 	if err != nil {
 		return
 	}
+
 	if acdCfg.ACDInformer {
+		log.Println("starting acd informer")
 		clientset := versioned.NewForConfigOrDie(cfg)
 		acdInformer := v1alpha1.NewApplicationInformer(clientset, acdCfg.ACDNamespace, 0, nil)
 
