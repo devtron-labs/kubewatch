@@ -466,42 +466,22 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 				log.Println("app added")
 				if app, ok := obj.(*v1alpha12.Application); ok {
 					log.Println("new app detected" + app.Name + " " + app.Status.Health.Status)
-					appJson, err := json.Marshal(app)
-					if err != nil {
-						log.Println("err", err)
-						return
-					}
-					log.Println("app update event ", string(appJson))
-					var reqBody = []byte(appJson)
-					err = client.Conn.Publish(appStatusUpdate, reqBody)
-					if err != nil {
-						log.Println("publish err", "err", err)
-						return
-					}
-					log.Println("app add sent")
+					SendAppUpdate(app, client)
 				}
 			},
 			UpdateFunc: func(old interface{}, new interface{}) {
 				log.Println("app update detected")
 				if oldApp, ok := old.(*v1alpha12.Application); ok {
 					if newApp, ok := new.(*v1alpha12.Application); ok {
+						if oldApp.Status.History != nil && newApp.Status.History != nil && len(oldApp.Status.History) != len(newApp.Status.History) {
+							log.Println("new deployment detected")
+							SendAppUpdate(newApp, client)
+							return
+						}
 						if oldApp.Status.Health.Status == newApp.Status.Health.Status {
 							return
 						}
-						log.Println("new status for app " + newApp.Name + " " + newApp.Status.Health.Status)
-						appJson, err := json.Marshal(newApp)
-						if err != nil {
-							log.Println("err", err)
-							return
-						}
-						log.Println("app update event ", string(appJson))
-						var reqBody = []byte(appJson)
-						err = client.Conn.Publish(appStatusUpdate, reqBody)
-						if err != nil {
-							log.Println("publish err", "err", err)
-							return
-						}
-						log.Println("app update sent")
+						SendAppUpdate(newApp, client)
 					}
 				}
 			},
@@ -517,6 +497,22 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 	signal.Notify(sigterm, syscall.SIGTERM)
 	signal.Notify(sigterm, syscall.SIGINT)
 	<-sigterm
+}
+
+func SendAppUpdate(app *v1alpha12.Application, client *PubSubClient) {
+	appJson, err := json.Marshal(app)
+	if err != nil {
+		log.Println("err", err)
+		return
+	}
+	log.Println("app update event ", string(appJson))
+	var reqBody = []byte(appJson)
+	err = client.Conn.Publish(appStatusUpdate, reqBody)
+	if err != nil {
+		log.Println("publish err", "err", err)
+		return
+	}
+	log.Println("app update sent")
 }
 
 func NewPubSubClient() (*PubSubClient, error) {
