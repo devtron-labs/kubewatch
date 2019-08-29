@@ -116,7 +116,6 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 	} else {
 		kubeClient = utils.GetClient()
 	}
-
 	if conf.Resource.Pod {
 		informer := cache.NewSharedIndexInformer(
 			&cache.ListWatch{
