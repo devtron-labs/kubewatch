@@ -40,6 +40,7 @@ import (
 	"os/signal"
 	"os/user"
 	"path/filepath"
+	"sort"
 	"syscall"
 	"time"
 
@@ -473,10 +474,27 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 				log.Println("app update detected")
 				if oldApp, ok := old.(*v1alpha12.Application); ok {
 					if newApp, ok := new.(*v1alpha12.Application); ok {
-						if oldApp.Status.History != nil && newApp.Status.History != nil && len(oldApp.Status.History) != len(newApp.Status.History) {
-							log.Println("new deployment detected")
-							SendAppUpdate(newApp, client)
-							return
+						if newApp.Status.History != nil && len(newApp.Status.History) > 0 {
+							if oldApp.Status.History == nil || len(oldApp.Status.History) == 0 {
+								log.Println("new deployment detected")
+								SendAppUpdate(newApp, client)
+							} else {
+								oldAppHistory := oldApp.Status.History
+								newAppHistory := newApp.Status.History
+								sort.Slice(oldAppHistory, func(i, j int) bool {
+									return oldAppHistory[j].DeployedAt.Before(&oldAppHistory[i].DeployedAt)
+								})
+								sort.Slice(newAppHistory, func(i, j int) bool {
+									return newAppHistory[j].DeployedAt.Before(&newAppHistory[i].DeployedAt)
+								})
+								oldRev := oldAppHistory[0]
+								newRev := newAppHistory[0]
+								if oldRev.Revision != newRev.Revision {
+									log.Println("new deployment detected")
+									SendAppUpdate(newApp, client)
+									return
+								}
+							}
 						}
 						if oldApp.Status.Health.Status == newApp.Status.Health.Status {
 							return
