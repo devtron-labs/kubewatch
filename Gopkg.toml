@@ -20,6 +20,14 @@
 #  name = "github.com/x/y"
 #  version = "2.4.0"
 
+[prune]
+  go-tests = true
+  unused-packages = true
+  [[prune.project]]
+      name = "github.com/argoproj/argo-cd"
+      non-go = false
+      unused-packages = false
+
 [[override]]
   name = "github.com/sirupsen/logrus"
   version = "1.4.2"
@@ -69,6 +77,14 @@
   name = "github.com/argoproj/argo"
   version = "2.3.0"
 
+[[override]]
+  name = "github.com/argoproj/pkg"
+  revision = "88ab0e836a8e8c70bc297c5764669bd7da27afd1"
+
 [[constraint]]
   name = "github.com/nats-io/stan"
   version = "0.5.0"
+
+[[constraint]]
+  name = "github.com/argoproj/argo-cd"
+  revision = "e0bd546a07818ec06a27c2b3033454e3eb1c4152"
