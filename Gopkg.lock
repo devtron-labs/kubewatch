@@ -49,6 +49,12 @@
     "errors",
     "pkg/apis/application",
     "pkg/apis/application/v1alpha1",
+    "pkg/client/clientset/versioned",
+    "pkg/client/clientset/versioned/scheme",
+    "pkg/client/clientset/versioned/typed/application/v1alpha1",
+    "pkg/client/informers/externalversions/application/v1alpha1",
+    "pkg/client/informers/externalversions/internalinterfaces",
+    "pkg/client/listers/application/v1alpha1",
     "util",
     "util/cache",
     "util/dex",
@@ -1251,6 +1257,9 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/argoproj/argo-cd/pkg/apis/application/v1alpha1",
+    "github.com/argoproj/argo-cd/pkg/client/clientset/versioned",
+    "github.com/argoproj/argo-cd/pkg/client/informers/externalversions/application/v1alpha1",
     "github.com/argoproj/argo-cd/util/session",
     "github.com/argoproj/argo/workflow/util",
     "github.com/caarlos0/env",
