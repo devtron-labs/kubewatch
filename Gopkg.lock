@@ -979,6 +979,14 @@
   version = "v0.0.2"
 
 [[projects]]
+  digest = "1:b778880d47d8544b11cd82b0d9731f9669d653489b400d0b5899b8a20934e7b4"
+  name = "gopkg.in/robfig/cron.v3"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "45fbe1491cdd47d74d1bf1396286d67faee8b8b5"
+  version = "v3.0.0"
+
+[[projects]]
   digest = "1:8c05919580be8a5be668709d7e5a69d5cd19b8ee9f23d62ce5b10d3457bf6a13"
   name = "gopkg.in/square/go-jose.v2"
   packages = [
@@ -1270,6 +1278,7 @@
     "github.com/spf13/cobra",
     "github.com/spf13/viper",
     "github.com/tbruyelle/hipchat-go/hipchat",
+    "gopkg.in/robfig/cron.v3",
     "gopkg.in/yaml.v2",
     "k8s.io/api/apps/v1",
     "k8s.io/api/apps/v1beta1",

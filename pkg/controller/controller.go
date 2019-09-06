@@ -27,6 +27,7 @@ import (
 	"github.com/caarlos0/env"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/stan"
+	"gopkg.in/robfig/cron.v3"
 	v13 "k8s.io/api/batch/v1"
 	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
@@ -71,6 +72,10 @@ type Event struct {
 	resourceType string
 }
 
+type CronEvent struct {
+	name string `json:"name"`
+}
+
 type WorkflowUpdateReq struct {
 	Key  string `json:"key"`
 	Type string `json:"type"`
@@ -107,6 +112,9 @@ type AcdConfig struct {
 
 const workflowStatusUpdate = "WORKFLOW_STATUS_UPDATE"
 const appStatusUpdate = "APPLICATION_STATUS_UPDATE"
+const deploymentFailureCheck = "APPLICATION_DEPLOYMENT_CHECK"
+
+var client *PubSubClient
 
 func Start(conf *config.Config, eventHandler handlers.Handler) {
 	var kubeClient kubernetes.Interface
@@ -403,16 +411,15 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 		go c.Run(stopCh)
 	}
 
-	client, err := NewPubSubClient()
+	client, err = NewPubSubClient()
 	if err != nil {
-		log.Println("err", err)
-		return
+		log.Panic("err", err)
 	}
 
 	ciCfg := &CiConfig{}
 	err = env.Parse(ciCfg)
 	if err != nil {
-		return
+		log.Panic("err", err)
 	}
 
 	if ciCfg.CiInformer {
@@ -509,12 +516,38 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 		appStopCh := make(chan struct{})
 		defer close(appStopCh)
 		go acdInformer.Run(appStopCh)
+
+		c := cron.New()
+		_, err := c.AddFunc("@every 1m", FireDailyMinuteEvent)
+		if err != nil {
+			log.Panic("cannot start daily cron, err ", err)
+		}
+		go c.Start()
 	}
 
 	sigterm := make(chan os.Signal, 1)
 	signal.Notify(sigterm, syscall.SIGTERM)
 	signal.Notify(sigterm, syscall.SIGINT)
 	<-sigterm
+}
+
+func FireDailyMinuteEvent() {
+	event := CronEvent{
+		name: "deployment_check",
+	}
+	eventJson, err := json.Marshal(event)
+	if err != nil {
+		log.Println("err", err)
+		return
+	}
+	log.Println("cron event", string(eventJson))
+	var reqBody = []byte(eventJson)
+	err = client.Conn.Publish(deploymentFailureCheck, reqBody)
+	if err != nil {
+		log.Println("publish err", "err", err)
+		return
+	}
+	log.Println("cron event sent")
 }
 
 func SendAppUpdate(app *v1alpha12.Application, client *PubSubClient) {
