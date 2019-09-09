@@ -117,7 +117,7 @@ type AcdConfig struct {
 
 const workflowStatusUpdate = "WORKFLOW_STATUS_UPDATE"
 const appStatusUpdate = "APPLICATION_STATUS_UPDATE"
-const deploymentFailureCheck = "APPLICATION_DEPLOYMENT_CHECK"
+const deploymentFailureCheck = "CRON_EVENTS"
 
 type EventType int
 
