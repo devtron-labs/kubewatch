@@ -25,6 +25,7 @@ import (
 	"github.com/argoproj/argo-cd/pkg/client/informers/externalversions/application/v1alpha1"
 	"github.com/argoproj/argo/workflow/util"
 	"github.com/caarlos0/env"
+	"github.com/hashicorp/go-uuid"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/stan"
 	"gopkg.in/robfig/cron.v3"
@@ -73,7 +74,11 @@ type Event struct {
 }
 
 type CronEvent struct {
-	name string `json:"name"`
+	EventName     string            `json:"eventName"`
+	EventTypeId   int               `json:"eventTypeId"`
+	CorrelationId string            `json:"correlationId"`
+	EventTime     string            `json:"eventTime"`
+	Payload       map[string]string `json:"payload"`
 }
 
 type WorkflowUpdateReq struct {
@@ -113,6 +118,14 @@ type AcdConfig struct {
 const workflowStatusUpdate = "WORKFLOW_STATUS_UPDATE"
 const appStatusUpdate = "APPLICATION_STATUS_UPDATE"
 const deploymentFailureCheck = "APPLICATION_DEPLOYMENT_CHECK"
+
+type EventType int
+
+const Trigger EventType = 1
+const Success EventType = 2
+const Fail EventType = 3
+
+const cronMinuteWiseEventName string = "minute-event"
 
 var client *PubSubClient
 
@@ -532,8 +545,13 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 }
 
 func FireDailyMinuteEvent() {
+	correlationId, _ := uuid.GenerateUUID()
 	event := CronEvent{
-		name: "deployment_check",
+		EventName:     cronMinuteWiseEventName,
+		EventTypeId:   int(Trigger),
+		CorrelationId: fmt.Sprintf("%s", correlationId),
+		EventTime:     time.Now().Format("2006-01-02 15:04:05"),
+		Payload:       map[string]string{},
 	}
 	eventJson, err := json.Marshal(event)
 	if err != nil {
