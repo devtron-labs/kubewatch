@@ -88,3 +88,7 @@
 [[constraint]]
   name = "github.com/argoproj/argo-cd"
   revision = "e0bd546a07818ec06a27c2b3033454e3eb1c4152"
+
+[[constraint]]
+  name = "gopkg.in/robfig/cron.v3"
+  version = "3.0.0"
