@@ -123,6 +123,7 @@ type AcdConfig struct {
 const workflowStatusUpdate = "WORKFLOW_STATUS_UPDATE"
 const appStatusUpdate = "APPLICATION_STATUS_UPDATE"
 const deploymentFailureCheck = "CRON_EVENTS"
+const cdWorkflowStatusUpdate = "CD_WORKFLOW_STATUS_UPDATE"
 
 type EventType int
 
@@ -501,7 +502,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 					log.Println("sending workflow update event ", string(wfJson))
 					var reqBody = []byte(wfJson)
 
-					err = client.Conn.Publish(workflowStatusUpdate, reqBody)
+					err = client.Conn.Publish(cdWorkflowStatusUpdate, reqBody)
 					if err != nil {
 						log.Println("publish err", "err", err)
 						return
