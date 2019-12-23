@@ -488,26 +488,26 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 		informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 			// When a new wf gets created
 			AddFunc: func(obj interface{}) {
-				log.Println("workflow created")
+				log.Println("cd workflow created")
 			},
 			// When a wf gets updated
 			UpdateFunc: func(oldWf interface{}, newWf interface{}) {
-				log.Println("workflow update detected")
+				log.Println("cd workflow update detected")
 				if workflow, ok := newWf.(*unstructured.Unstructured).Object["status"]; ok {
 					wfJson, err := json.Marshal(workflow)
 					if err != nil {
 						log.Println("err", err)
 						return
 					}
-					log.Println("sending workflow update event ", string(wfJson))
+					log.Println("sending cd workflow update event ", string(wfJson))
 					var reqBody = []byte(wfJson)
 
 					err = client.Conn.Publish(cdWorkflowStatusUpdate, reqBody)
 					if err != nil {
-						log.Println("publish err", "err", err)
+						log.Println("publish cd err", "err", err)
 						return
 					}
-					log.Println("workflow update sent")
+					log.Println("cd workflow update sent")
 				}
 			},
 			// When a wf gets deleted
