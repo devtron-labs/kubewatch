@@ -25,8 +25,10 @@ import (
 	"github.com/argoproj/argo-cd/pkg/client/informers/externalversions/application/v1alpha1"
 	"github.com/argoproj/argo/workflow/util"
 	"github.com/caarlos0/env"
+	"github.com/hashicorp/go-uuid"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/stan"
+	"gopkg.in/robfig/cron.v3"
 	v13 "k8s.io/api/batch/v1"
 	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
@@ -71,6 +73,14 @@ type Event struct {
 	resourceType string
 }
 
+type CronEvent struct {
+	EventName     string            `json:"eventName"`
+	EventTypeId   int               `json:"eventTypeId"`
+	CorrelationId string            `json:"correlationId"`
+	EventTime     string            `json:"eventTime"`
+	Payload       map[string]string `json:"payload"`
+}
+
 type WorkflowUpdateReq struct {
 	Key  string `json:"key"`
 	Type string `json:"type"`
@@ -100,6 +110,11 @@ type CiConfig struct {
 	CiInformer       bool   `env:"CI_INFORMER" envDefault:"true"`
 }
 
+type CdConfig struct {
+	DefaultNamespace string `env:"CD_DEFAULT_NAMESPACE" envDefault:"devtron-cd"`
+	CdInformer       bool   `env:"CD_INFORMER" envDefault:"true"`
+}
+
 type AcdConfig struct {
 	ACDNamespace string `env:"ACD_NAMESPACE" envDefault:"devtroncd"`
 	ACDInformer  bool   `env:"ACD_INFORMER" envDefault:"true"`
@@ -107,6 +122,18 @@ type AcdConfig struct {
 
 const workflowStatusUpdate = "WORKFLOW_STATUS_UPDATE"
 const appStatusUpdate = "APPLICATION_STATUS_UPDATE"
+const deploymentFailureCheck = "CRON_EVENTS"
+const cdWorkflowStatusUpdate = "CD_WORKFLOW_STATUS_UPDATE"
+
+type EventType int
+
+const Trigger EventType = 1
+const Success EventType = 2
+const Fail EventType = 3
+
+const cronMinuteWiseEventName string = "minute-event"
+
+var client *PubSubClient
 
 func Start(conf *config.Config, eventHandler handlers.Handler) {
 	var kubeClient kubernetes.Interface
@@ -403,16 +430,15 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 		go c.Run(stopCh)
 	}
 
-	client, err := NewPubSubClient()
+	client, err = NewPubSubClient()
 	if err != nil {
-		log.Println("err", err)
-		return
+		log.Panic("err", err)
 	}
 
 	ciCfg := &CiConfig{}
 	err = env.Parse(ciCfg)
 	if err != nil {
-		return
+		log.Panic("err", err)
 	}
 
 	if ciCfg.CiInformer {
@@ -440,6 +466,48 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 						return
 					}
 					log.Println("workflow update sent")
+				}
+			},
+			// When a wf gets deleted
+			DeleteFunc: func(wf interface{}) {},
+		})
+
+		stopCh := make(chan struct{})
+		defer close(stopCh)
+		go informer.Run(stopCh)
+	}
+
+	cdCfg := &CdConfig{}
+	err = env.Parse(cdCfg)
+	if err != nil {
+		log.Panic("err", err)
+	}
+
+	if cdCfg.CdInformer {
+		informer := util.NewWorkflowInformer(cfg, cdCfg.DefaultNamespace, 0, nil)
+		informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+			// When a new wf gets created
+			AddFunc: func(obj interface{}) {
+				log.Println("cd workflow created")
+			},
+			// When a wf gets updated
+			UpdateFunc: func(oldWf interface{}, newWf interface{}) {
+				log.Println("cd workflow update detected")
+				if workflow, ok := newWf.(*unstructured.Unstructured).Object["status"]; ok {
+					wfJson, err := json.Marshal(workflow)
+					if err != nil {
+						log.Println("err", err)
+						return
+					}
+					log.Println("sending cd workflow update event ", string(wfJson))
+					var reqBody = []byte(wfJson)
+
+					err = client.Conn.Publish(cdWorkflowStatusUpdate, reqBody)
+					if err != nil {
+						log.Println("publish cd err", "err", err)
+						return
+					}
+					log.Println("cd workflow update sent")
 				}
 			},
 			// When a wf gets deleted
@@ -509,12 +577,43 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 		appStopCh := make(chan struct{})
 		defer close(appStopCh)
 		go acdInformer.Run(appStopCh)
+
+		c := cron.New()
+		_, err := c.AddFunc("@every 1m", FireDailyMinuteEvent)
+		if err != nil {
+			log.Panic("cannot start daily cron, err ", err)
+		}
+		go c.Start()
 	}
 
 	sigterm := make(chan os.Signal, 1)
 	signal.Notify(sigterm, syscall.SIGTERM)
 	signal.Notify(sigterm, syscall.SIGINT)
 	<-sigterm
+}
+
+func FireDailyMinuteEvent() {
+	correlationId, _ := uuid.GenerateUUID()
+	event := CronEvent{
+		EventName:     cronMinuteWiseEventName,
+		EventTypeId:   int(Trigger),
+		CorrelationId: fmt.Sprintf("%s", correlationId),
+		EventTime:     time.Now().Format("2006-01-02 15:04:05"),
+		Payload:       map[string]string{},
+	}
+	eventJson, err := json.Marshal(event)
+	if err != nil {
+		log.Println("err", err)
+		return
+	}
+	log.Println("cron event", string(eventJson))
+	var reqBody = []byte(eventJson)
+	err = client.Conn.Publish(deploymentFailureCheck, reqBody)
+	if err != nil {
+		log.Println("publish err", "err", err)
+		return
+	}
+	log.Println("cron event sent")
 }
 
 func SendAppUpdate(app *v1alpha12.Application, client *PubSubClient) {
