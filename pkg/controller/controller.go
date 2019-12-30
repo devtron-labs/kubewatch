@@ -110,6 +110,11 @@ type CiConfig struct {
 	CiInformer       bool   `env:"CI_INFORMER" envDefault:"true"`
 }
 
+type CdConfig struct {
+	DefaultNamespace string `env:"CD_DEFAULT_NAMESPACE" envDefault:"devtron-cd"`
+	CdInformer       bool   `env:"CD_INFORMER" envDefault:"true"`
+}
+
 type AcdConfig struct {
 	ACDNamespace string `env:"ACD_NAMESPACE" envDefault:"devtroncd"`
 	ACDInformer  bool   `env:"ACD_INFORMER" envDefault:"true"`
@@ -118,6 +123,7 @@ type AcdConfig struct {
 const workflowStatusUpdate = "WORKFLOW_STATUS_UPDATE"
 const appStatusUpdate = "APPLICATION_STATUS_UPDATE"
 const deploymentFailureCheck = "CRON_EVENTS"
+const cdWorkflowStatusUpdate = "CD_WORKFLOW_STATUS_UPDATE"
 
 type EventType int
 
@@ -460,6 +466,48 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 						return
 					}
 					log.Println("workflow update sent")
+				}
+			},
+			// When a wf gets deleted
+			DeleteFunc: func(wf interface{}) {},
+		})
+
+		stopCh := make(chan struct{})
+		defer close(stopCh)
+		go informer.Run(stopCh)
+	}
+
+	cdCfg := &CdConfig{}
+	err = env.Parse(cdCfg)
+	if err != nil {
+		log.Panic("err", err)
+	}
+
+	if cdCfg.CdInformer {
+		informer := util.NewWorkflowInformer(cfg, cdCfg.DefaultNamespace, 0, nil)
+		informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+			// When a new wf gets created
+			AddFunc: func(obj interface{}) {
+				log.Println("cd workflow created")
+			},
+			// When a wf gets updated
+			UpdateFunc: func(oldWf interface{}, newWf interface{}) {
+				log.Println("cd workflow update detected")
+				if workflow, ok := newWf.(*unstructured.Unstructured).Object["status"]; ok {
+					wfJson, err := json.Marshal(workflow)
+					if err != nil {
+						log.Println("err", err)
+						return
+					}
+					log.Println("sending cd workflow update event ", string(wfJson))
+					var reqBody = []byte(wfJson)
+
+					err = client.Conn.Publish(cdWorkflowStatusUpdate, reqBody)
+					if err != nil {
+						log.Println("publish cd err", "err", err)
+						return
+					}
+					log.Println("cd workflow update sent")
 				}
 			},
 			// When a wf gets deleted
