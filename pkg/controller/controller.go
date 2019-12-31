@@ -566,7 +566,6 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 						}
 						if oldApp.Status.Health.Status == newApp.Status.Health.Status && !((newApp.Status.OperationState.Phase == v1alpha12.OperationRunning) ||
 							(newApp.Status.OperationState.Phase == v1alpha12.OperationTerminating)) {
-							log.Println("exit <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
 							return
 						}
 						SendAppUpdate(newApp, client)
