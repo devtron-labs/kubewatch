@@ -42,7 +42,6 @@ import (
 	"os/signal"
 	"os/user"
 	"path/filepath"
-	"sort"
 	"syscall"
 	"time"
 
@@ -547,7 +546,12 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 								log.Println("new deployment detected")
 								SendAppUpdate(newApp, client)
 							} else {
-								oldAppHistory := oldApp.Status.History
+								oldRevision:=oldApp.Status.Sync.Revision
+								newRevision :=newApp.Status.Sync.Revision
+								if oldRevision!=newRevision{
+									SendAppUpdate(newApp, client)
+								}
+							/*	oldAppHistory := oldApp.Status.History
 								newAppHistory := newApp.Status.History
 								sort.Slice(oldAppHistory, func(i, j int) bool {
 									return oldAppHistory[j].DeployedAt.Before(&oldAppHistory[i].DeployedAt)
@@ -561,11 +565,10 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 									log.Println("new deployment detected")
 									SendAppUpdate(newApp, client)
 									return
-								}
+								}*/
 							}
 						}
-						if oldApp.Status.Health.Status == newApp.Status.Health.Status && !((newApp.Status.OperationState.Phase == v1alpha12.OperationRunning) ||
-							(newApp.Status.OperationState.Phase == v1alpha12.OperationTerminating)) {
+						if oldApp.Status.Health.Status == newApp.Status.Health.Status {
 							return
 						}
 						SendAppUpdate(newApp, client)
