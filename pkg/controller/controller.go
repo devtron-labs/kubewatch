@@ -491,19 +491,21 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 	}
 
 	if externalCD.External {
+		log.Println("applying listner for external")
 		informer := util.NewWorkflowInformer(cfg, externalCD.Namespace, 0, nil)
 		informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 			// When a new wf gets created
 			AddFunc: func(obj interface{}) {
-				log.Println("cd workflow created")
+				log.Println("external cd workflow created")
 			},
 			// When a wf gets updated
 			UpdateFunc: func(oldWf interface{}, newWf interface{}) {
-
+				log.Println("external wf event received")
 				if workflow, ok := newWf.(*v1alpha13.Workflow); ok {
+					log.Println("external wf event received 2")
+
 					if val, ok := workflow.Annotations["workflows.argoproj.io/controller-instanceid"]; ok && val == "devtron-runner" {
 						log.Println("cd external workflow update detected")
-
 						wfJson, err := json.Marshal(workflow.Status)
 						if err != nil {
 							log.Println("err", err)
