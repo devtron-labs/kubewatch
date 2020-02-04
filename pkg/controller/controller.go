@@ -500,22 +500,23 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 			// When a wf gets updated
 			UpdateFunc: func(oldWf interface{}, newWf interface{}) {
 
-				log.Println("cd workflow update detected")
 				if workflow, ok := newWf.(*v1alpha13.Workflow); ok {
 					if val, ok := workflow.Annotations["workflows.argoproj.io/controller-instanceid"]; ok && val == "devtron-runner" {
+						log.Println("cd external workflow update detected")
+
 						wfJson, err := json.Marshal(workflow.Status)
 						if err != nil {
 							log.Println("err", err)
 							return
 						}
-						log.Println("sending cd workflow update event ", string(wfJson))
+						log.Println("sending external cd workflow update event ", string(wfJson))
 						var reqBody = []byte(wfJson)
 						err = PublishEventsOnRest(reqBody, cdWorkflowStatusUpdate, externalCD)
 						if err != nil {
 							log.Println("publish cd err", "err", err)
 							return
 						}
-						log.Println("cd workflow update sent")
+						log.Println("external cd workflow update sent")
 					}
 				}
 			},
