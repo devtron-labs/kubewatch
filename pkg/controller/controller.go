@@ -23,7 +23,6 @@ import (
 	v1alpha12 "github.com/argoproj/argo-cd/pkg/apis/application/v1alpha1"
 	"github.com/argoproj/argo-cd/pkg/client/clientset/versioned"
 	"github.com/argoproj/argo-cd/pkg/client/informers/externalversions/application/v1alpha1"
-	v1alpha13 "github.com/argoproj/argo/pkg/apis/workflow/v1alpha1"
 	"github.com/argoproj/argo/workflow/util"
 	"github.com/caarlos0/env"
 	"github.com/hashicorp/go-uuid"
@@ -500,26 +499,23 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 			},
 			// When a wf gets updated
 			UpdateFunc: func(oldWf interface{}, newWf interface{}) {
+				//TODO apply filter for devtron
 				log.Println("external wf event received")
-				if workflow, ok := newWf.(*v1alpha13.Workflow); ok {
-					log.Println("external wf event received 2")
-
-					if val, ok := workflow.Annotations["workflows.argoproj.io/controller-instanceid"]; ok && val == "devtron-runner" {
-						log.Println("cd external workflow update detected")
-						wfJson, err := json.Marshal(workflow.Status)
-						if err != nil {
-							log.Println("err", err)
-							return
-						}
-						log.Println("sending external cd workflow update event ", string(wfJson))
-						var reqBody = []byte(wfJson)
-						err = PublishEventsOnRest(reqBody, cdWorkflowStatusUpdate, externalCD)
-						if err != nil {
-							log.Println("publish cd err", "err", err)
-							return
-						}
-						log.Println("external cd workflow update sent")
+				if workflow, ok := newWf.(*unstructured.Unstructured).Object["status"]; ok {
+					wfJson, err := json.Marshal(workflow)
+					if err != nil {
+						log.Println("err", err)
+						return
 					}
+					log.Println("sending external cd workflow update event ", string(wfJson))
+					var reqBody = []byte(wfJson)
+
+					err = PublishEventsOnRest(reqBody, cdWorkflowStatusUpdate, externalCD)
+					if err != nil {
+						log.Println("publish cd err", "err", err)
+						return
+					}
+					log.Println("external cd workflow update sent")
 				}
 			},
 			// When a wf gets deleted
