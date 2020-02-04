@@ -119,6 +119,7 @@ type CdConfig struct {
 type ExternalCdConfig struct {
 	External    bool   `env:"CD_EXTERNAL_REST_LISTENER" envDefault:"false"`
 	ListenerUrl string `env:"CD_EXTERNAL_LISTENER_URL" envDefault:"http://devtroncd-orchestrator-service-prod.devtroncd:80"`
+	Namespace   string `env:"CD_EXTERNAL_NAMESPACE" envDefault:""`
 }
 
 type AcdConfig struct {
@@ -490,7 +491,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 	}
 
 	if externalCD.External {
-		informer := util.NewWorkflowInformer(cfg, "", 0, nil)
+		informer := util.NewWorkflowInformer(cfg, externalCD.Namespace, 0, nil)
 		informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 			// When a new wf gets created
 			AddFunc: func(obj interface{}) {
