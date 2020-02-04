@@ -23,11 +23,13 @@ import (
 	v1alpha12 "github.com/argoproj/argo-cd/pkg/apis/application/v1alpha1"
 	"github.com/argoproj/argo-cd/pkg/client/clientset/versioned"
 	"github.com/argoproj/argo-cd/pkg/client/informers/externalversions/application/v1alpha1"
+	v1alpha13 "github.com/argoproj/argo/pkg/apis/workflow/v1alpha1"
 	"github.com/argoproj/argo/workflow/util"
 	"github.com/caarlos0/env"
 	"github.com/hashicorp/go-uuid"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/stan"
+	"gopkg.in/go-resty/resty.v2"
 	"gopkg.in/robfig/cron.v3"
 	v13 "k8s.io/api/batch/v1"
 	"k8s.io/api/core/v1"
@@ -112,6 +114,11 @@ type CiConfig struct {
 type CdConfig struct {
 	DefaultNamespace string `env:"CD_DEFAULT_NAMESPACE" envDefault:"devtron-cd"`
 	CdInformer       bool   `env:"CD_INFORMER" envDefault:"true"`
+}
+
+type ExternalCdConfig struct {
+	External    bool   `env:"CD_EXTERNAL_REST_LISTENER" envDefault:"false"`
+	ListenerUrl string `env:"CD_EXTERNAL_LISTENER_URL" envDefault:"http://devtroncd-orchestrator-service-prod.devtroncd:80"`
 }
 
 type AcdConfig struct {
@@ -475,7 +482,51 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 		defer close(stopCh)
 		go informer.Run(stopCh)
 	}
+	///------------
+	externalCD := ExternalCdConfig{}
+	err = env.Parse(externalCD)
+	if err != nil {
+		log.Panic("err", err)
+	}
 
+	if externalCD.External {
+		informer := util.NewWorkflowInformer(cfg, "", 0, nil)
+		informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+			// When a new wf gets created
+			AddFunc: func(obj interface{}) {
+				log.Println("cd workflow created")
+			},
+			// When a wf gets updated
+			UpdateFunc: func(oldWf interface{}, newWf interface{}) {
+
+				log.Println("cd workflow update detected")
+				if workflow, ok := newWf.(*v1alpha13.Workflow); ok {
+					if val, ok := workflow.Annotations["workflows.argoproj.io/controller-instanceid"]; ok && val == "devtron-runner" {
+						wfJson, err := json.Marshal(workflow.Status)
+						if err != nil {
+							log.Println("err", err)
+							return
+						}
+						log.Println("sending cd workflow update event ", string(wfJson))
+						var reqBody = []byte(wfJson)
+						err = PublishEventsOnRest(reqBody, cdWorkflowStatusUpdate, externalCD)
+						if err != nil {
+							log.Println("publish cd err", "err", err)
+							return
+						}
+						log.Println("cd workflow update sent")
+					}
+				}
+			},
+			// When a wf gets deleted
+			DeleteFunc: func(wf interface{}) {},
+		})
+
+		stopCh := make(chan struct{})
+		defer close(stopCh)
+		go informer.Run(stopCh)
+	}
+	///-------------------
 	cdCfg := &CdConfig{}
 	err = env.Parse(cdCfg)
 	if err != nil {
@@ -546,26 +597,26 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 								log.Println("new deployment detected")
 								SendAppUpdate(newApp, client)
 							} else {
-								oldRevision:=oldApp.Status.Sync.Revision
-								newRevision :=newApp.Status.Sync.Revision
-								if oldRevision!=newRevision{
+								oldRevision := oldApp.Status.Sync.Revision
+								newRevision := newApp.Status.Sync.Revision
+								if oldRevision != newRevision {
 									SendAppUpdate(newApp, client)
 								}
-							/*	oldAppHistory := oldApp.Status.History
-								newAppHistory := newApp.Status.History
-								sort.Slice(oldAppHistory, func(i, j int) bool {
-									return oldAppHistory[j].DeployedAt.Before(&oldAppHistory[i].DeployedAt)
-								})
-								sort.Slice(newAppHistory, func(i, j int) bool {
-									return newAppHistory[j].DeployedAt.Before(&newAppHistory[i].DeployedAt)
-								})
-								oldRev := oldAppHistory[0]
-								newRev := newAppHistory[0]
-								if oldRev.Revision != newRev.Revision {
-									log.Println("new deployment detected")
-									SendAppUpdate(newApp, client)
-									return
-								}*/
+								/*	oldAppHistory := oldApp.Status.History
+									newAppHistory := newApp.Status.History
+									sort.Slice(oldAppHistory, func(i, j int) bool {
+										return oldAppHistory[j].DeployedAt.Before(&oldAppHistory[i].DeployedAt)
+									})
+									sort.Slice(newAppHistory, func(i, j int) bool {
+										return newAppHistory[j].DeployedAt.Before(&newAppHistory[i].DeployedAt)
+									})
+									oldRev := oldAppHistory[0]
+									newRev := newAppHistory[0]
+									if oldRev.Revision != newRev.Revision {
+										log.Println("new deployment detected")
+										SendAppUpdate(newApp, client)
+										return
+									}*/
 							}
 						}
 						if oldApp.Status.Health.Status == newApp.Status.Health.Status {
@@ -594,6 +645,30 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 	signal.Notify(sigterm, syscall.SIGTERM)
 	signal.Notify(sigterm, syscall.SIGINT)
 	<-sigterm
+}
+
+type PublishRequest struct {
+	Topic   string          `json:"topic"`
+	Payload json.RawMessage `json:"payload"`
+}
+
+func PublishEventsOnRest(jsonBody []byte, topic string, externalCdConfig ExternalCdConfig) error {
+	publishRequest := &PublishRequest{
+		Topic:   topic,
+		Payload: jsonBody,
+	}
+	client := resty.New()
+	resp, err := client.SetRetryCount(4).R().
+		SetHeader("Content-Type", "application/json").
+		SetBody(publishRequest).
+		//SetResult().    // or SetResult(AuthSuccess{}).
+		Post(externalCdConfig.ListenerUrl)
+	if err != nil {
+		log.Println("err in publishing over rest", err)
+		return err
+	}
+	log.Println("res ", string(resp.Body()))
+	return nil
 }
 
 func FireDailyMinuteEvent() {
