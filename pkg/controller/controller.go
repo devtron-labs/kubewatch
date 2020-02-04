@@ -484,7 +484,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 		go informer.Run(stopCh)
 	}
 	///------------
-	externalCD := ExternalCdConfig{}
+	externalCD := &ExternalCdConfig{}
 	err = env.Parse(externalCD)
 	if err != nil {
 		log.Panic("err", err)
@@ -653,7 +653,7 @@ type PublishRequest struct {
 	Payload json.RawMessage `json:"payload"`
 }
 
-func PublishEventsOnRest(jsonBody []byte, topic string, externalCdConfig ExternalCdConfig) error {
+func PublishEventsOnRest(jsonBody []byte, topic string, externalCdConfig *ExternalCdConfig) error {
 	publishRequest := &PublishRequest{
 		Topic:   topic,
 		Payload: jsonBody,
