@@ -17,6 +17,7 @@ limitations under the License.
 package controller
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -672,6 +673,7 @@ func PublishEventsOnRest(jsonBody []byte, topic string, externalCdConfig *Extern
 		Payload: jsonBody,
 	}
 	client := resty.New()
+	client.SetTLSClientConfig(&tls.Config{ InsecureSkipVerify: true })
 	resp, err := client.SetRetryCount(4).R().
 		SetHeader("Content-Type", "application/json").
 		SetBody(publishRequest).
