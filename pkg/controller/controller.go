@@ -456,9 +456,6 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 	}
 
 	if ciCfg.CiInformer {
-		if client == nil {
-			return
-		}
 
 		informer := util.NewWorkflowInformer(cfg, ciCfg.DefaultNamespace, 0, nil)
 		informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -477,7 +474,10 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 					}
 					log.Println("sending workflow update event ", string(wfJson))
 					var reqBody = []byte(wfJson)
-
+					if client == nil {
+						log.Println("dont't publish")
+						return
+					}
 					err = client.Conn.Publish(workflowStatusUpdate, reqBody)
 					if err != nil {
 						log.Println("publish err", "err", err)
@@ -541,9 +541,6 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 	}
 
 	if cdCfg.CdInformer {
-		if client == nil {
-			return
-		}
 
 		informer := util.NewWorkflowInformer(cfg, cdCfg.DefaultNamespace, 0, nil)
 		informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -562,7 +559,10 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 					}
 					log.Println("sending cd workflow update event ", string(wfJson))
 					var reqBody = []byte(wfJson)
-
+					if client == nil {
+						log.Println("dont't publish")
+						return
+					}
 					err = client.Conn.Publish(cdWorkflowStatusUpdate, reqBody)
 					if err != nil {
 						log.Println("publish cd err", "err", err)
@@ -587,10 +587,6 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 	}
 
 	if acdCfg.ACDInformer {
-		if client == nil {
-			return
-		}
-
 		log.Println("starting acd informer")
 		clientset := versioned.NewForConfigOrDie(cfg)
 		acdInformer := v1alpha1.NewApplicationInformer(clientset, acdCfg.ACDNamespace, 0, nil)
@@ -712,6 +708,7 @@ func FireDailyMinuteEvent() {
 
 func SendAppUpdate(app *v1alpha12.Application, client *PubSubClient) {
 	if client == nil {
+		log.Println("dont't send update")
 		return
 	}
 	appJson, err := json.Marshal(app)
