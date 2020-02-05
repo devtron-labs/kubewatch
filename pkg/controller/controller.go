@@ -436,9 +436,17 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 		go c.Run(stopCh)
 	}
 
-	client, err = NewPubSubClient()
+	externalCD := &ExternalCdConfig{}
+	err = env.Parse(externalCD)
 	if err != nil {
 		log.Panic("err", err)
+	}
+
+	if !externalCD.External {
+		client, err = NewPubSubClient()
+		if err != nil {
+			log.Panic("err", err)
+		}
 	}
 
 	ciCfg := &CiConfig{}
@@ -448,6 +456,10 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 	}
 
 	if ciCfg.CiInformer {
+		if client == nil {
+			return
+		}
+
 		informer := util.NewWorkflowInformer(cfg, ciCfg.DefaultNamespace, 0, nil)
 		informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 			// When a new wf gets created
@@ -483,11 +495,6 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 		go informer.Run(stopCh)
 	}
 	///------------
-	externalCD := &ExternalCdConfig{}
-	err = env.Parse(externalCD)
-	if err != nil {
-		log.Panic("err", err)
-	}
 
 	if externalCD.External {
 		log.Println("applying listner for external")
@@ -534,6 +541,10 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 	}
 
 	if cdCfg.CdInformer {
+		if client == nil {
+			return
+		}
+
 		informer := util.NewWorkflowInformer(cfg, cdCfg.DefaultNamespace, 0, nil)
 		informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 			// When a new wf gets created
@@ -576,6 +587,10 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 	}
 
 	if acdCfg.ACDInformer {
+		if client == nil {
+			return
+		}
+
 		log.Println("starting acd informer")
 		clientset := versioned.NewForConfigOrDie(cfg)
 		acdInformer := v1alpha1.NewApplicationInformer(clientset, acdCfg.ACDNamespace, 0, nil)
@@ -696,6 +711,9 @@ func FireDailyMinuteEvent() {
 }
 
 func SendAppUpdate(app *v1alpha12.Application, client *PubSubClient) {
+	if client == nil {
+		return
+	}
 	appJson, err := json.Marshal(app)
 	if err != nil {
 		log.Println("err", err)
