@@ -672,16 +672,18 @@ func PublishEventsOnRest(jsonBody []byte, topic string, externalCdConfig *Extern
 		Topic:   topic,
 		Payload: jsonBody,
 	}
-	client := resty.New()
+	client := resty.New().SetDebug(true)
 	client.SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true})
 	resp, err := client.SetRetryCount(4).R().
 		SetHeader("Content-Type", "application/json").
 		SetBody(publishRequest).
+
 		SetAuthToken(externalCdConfig.Token).
 		//SetResult().    // or SetResult(AuthSuccess{}).
 		Post(externalCdConfig.ListenerUrl)
+
 	if err != nil {
-		log.Println("err in publishing over rest", err)
+		log.Println("err in publishing over rest", "token ",externalCdConfig.Token, "body", publishRequest, err)
 		return err
 	}
 	log.Println("res ", string(resp.Body()))
