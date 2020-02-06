@@ -118,7 +118,7 @@ type CdConfig struct {
 
 type ExternalCdConfig struct {
 	External    bool   `env:"CD_EXTERNAL_REST_LISTENER" envDefault:"false"`
-	Token       string `json:"CD_EXTERNAL_ORCHESTRATOR_TOKEN" envDefault:""`
+	Token       string `env:"CD_EXTERNAL_ORCHESTRATOR_TOKEN" envDefault:""`
 	ListenerUrl string `env:"CD_EXTERNAL_LISTENER_URL" envDefault:"http://devtroncd-orchestrator-service-prod.devtroncd:80"`
 	Namespace   string `env:"CD_EXTERNAL_NAMESPACE" envDefault:""`
 }
