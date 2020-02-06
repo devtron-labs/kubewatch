@@ -784,7 +784,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:87d58faa037d4f0336560c4ff6ff2ef72bbb8aba02d469a2f37f16cbe1657d54"
+  digest = "1:37922ab58b8d7908466f75fb8a8ae8bda20e6a33daa24babb4de92d236dc8ee8"
   name = "golang.org/x/net"
   packages = [
     "context",
@@ -795,6 +795,7 @@
     "idna",
     "internal/socks",
     "proxy",
+    "publicsuffix",
     "websocket",
   ]
   pruneopts = "UT"
@@ -905,6 +906,14 @@
   pruneopts = "UT"
   revision = "6eaf6f47437a6b4e2153a190160ef39a92c7eceb"
   version = "v1.23.0"
+
+[[projects]]
+  digest = "1:e63cd05da63802f9af5033119ac3e4710052872ce3e1f947e1e95c973420c88f"
+  name = "gopkg.in/go-resty/resty.v2"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "de0735f66dae7abf8fb1073b4ace3032c1491424"
+  version = "v2.1.0"
 
 [[projects]]
   digest = "1:2d1fbdc6777e5408cabeb02bf336305e724b925ff4546ded0fa8715a7267922a"
@@ -1271,6 +1280,7 @@
     "github.com/argoproj/argo-cd/util/session",
     "github.com/argoproj/argo/workflow/util",
     "github.com/caarlos0/env",
+    "github.com/hashicorp/go-uuid",
     "github.com/nats-io/nats.go",
     "github.com/nats-io/stan",
     "github.com/nlopes/slack",
@@ -1278,6 +1288,7 @@
     "github.com/spf13/cobra",
     "github.com/spf13/viper",
     "github.com/tbruyelle/hipchat-go/hipchat",
+    "gopkg.in/go-resty/resty.v2",
     "gopkg.in/robfig/cron.v3",
     "gopkg.in/yaml.v2",
     "k8s.io/api/apps/v1",
