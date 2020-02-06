@@ -118,6 +118,7 @@ type CdConfig struct {
 
 type ExternalCdConfig struct {
 	External    bool   `env:"CD_EXTERNAL_REST_LISTENER" envDefault:"false"`
+	Token       string `json:"CD_EXTERNAL_ORCHESTRATOR_TOKEN" envDefault:""`
 	ListenerUrl string `env:"CD_EXTERNAL_LISTENER_URL" envDefault:"http://devtroncd-orchestrator-service-prod.devtroncd:80"`
 	Namespace   string `env:"CD_EXTERNAL_NAMESPACE" envDefault:""`
 }
@@ -655,7 +656,6 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 		go informer.Run(stopCh)
 	}
 
-
 	sigterm := make(chan os.Signal, 1)
 	signal.Notify(sigterm, syscall.SIGTERM)
 	signal.Notify(sigterm, syscall.SIGINT)
@@ -673,10 +673,11 @@ func PublishEventsOnRest(jsonBody []byte, topic string, externalCdConfig *Extern
 		Payload: jsonBody,
 	}
 	client := resty.New()
-	client.SetTLSClientConfig(&tls.Config{ InsecureSkipVerify: true })
+	client.SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true})
 	resp, err := client.SetRetryCount(4).R().
 		SetHeader("Content-Type", "application/json").
 		SetBody(publishRequest).
+		SetAuthToken(externalCdConfig.Token).
 		//SetResult().    // or SetResult(AuthSuccess{}).
 		Post(externalCdConfig.ListenerUrl)
 	if err != nil {
