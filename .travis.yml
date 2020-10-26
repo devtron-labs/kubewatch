@@ -1,0 +1,14 @@
+language: go
+
+sudo: required
+
+go:
+  - 1.12.x
+
+branches:
+  only:
+    - master
+
+install:
+  - go get -u github.com/golang/dep/cmd/dep
+  - dep ensure

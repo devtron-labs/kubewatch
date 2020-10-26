@@ -1,0 +1,97 @@
+syntax = "proto3";
+option go_package = "github.com/argoproj/argo-cd/server/repository";
+
+// Repository Service
+//
+// Repository Service API performs CRUD actions against repository resources 
+package repository;
+
+import "gogoproto/gogo.proto";
+import "google/api/annotations.proto";
+import "k8s.io/api/core/v1/generated.proto";
+import "github.com/argoproj/argo-cd/pkg/apis/application/v1alpha1/generated.proto";
+import "github.com/argoproj/argo-cd/reposerver/repository/repository.proto";
+
+// RepoAppsQuery is a query for Repository apps
+message RepoAppsQuery {
+	string repo = 1;
+	string revision = 2;
+}
+
+
+// AppInfo contains application type and app file path
+message AppInfo {
+	string type = 1;
+	string path = 2;
+}
+
+// RepoAppDetailsQuery contains query information for app details request
+message RepoAppDetailsQuery {
+	string repo = 1;
+	string revision = 2;
+	string path = 3;
+	repository.HelmAppDetailsQuery helm = 4;
+	repository.KsonnetAppDetailsQuery ksonnet = 5;
+}
+
+// RepoAppsResponse contains applications of specified repository
+message RepoAppsResponse {
+	repeated AppInfo items = 1;
+}
+
+// RepoQuery is a query for Repository resources
+message RepoQuery {
+	string repo = 1;
+}
+
+message RepoResponse {}
+
+message RepoCreateRequest {
+    github.com.argoproj.argo_cd.pkg.apis.application.v1alpha1.Repository repo = 1;
+    bool upsert = 2;
+}
+
+message RepoUpdateRequest {
+    github.com.argoproj.argo_cd.pkg.apis.application.v1alpha1.Repository repo = 1;
+}
+
+// RepositoryService 
+service RepositoryService {
+
+	// List returns list of repos
+	rpc List(RepoQuery) returns (github.com.argoproj.argo_cd.pkg.apis.application.v1alpha1.RepositoryList) {
+		option (google.api.http).get = "/api/v1/repositories";
+	}
+
+	// ListApps returns list of apps in the repo
+	rpc ListApps(RepoAppsQuery) returns (RepoAppsResponse) {
+		option (google.api.http).get = "/api/v1/repositories/{repo}/apps";
+	}
+
+	// GetAppDetails returns application details by given path
+	rpc GetAppDetails(RepoAppDetailsQuery) returns (repository.RepoAppDetailsResponse) {
+		option (google.api.http).get = "/api/v1/repositories/{repo}/apps/{path}";
+	}
+
+	// Create creates a repo
+	rpc Create(RepoCreateRequest) returns (github.com.argoproj.argo_cd.pkg.apis.application.v1alpha1.Repository) {
+		option (google.api.http) = {
+			post: "/api/v1/repositories"
+			body: "repo"
+		};
+	}
+	
+	// Update updates a repo
+	rpc Update(RepoUpdateRequest) returns (github.com.argoproj.argo_cd.pkg.apis.application.v1alpha1.Repository) {
+		option (google.api.http) = {
+			put: "/api/v1/repositories/{repo.repo}"
+			body: "repo"
+		};
+	}
+
+	// Delete deletes a repo
+	rpc Delete(RepoQuery) returns (RepoResponse) {
+		option (google.api.http).delete = "/api/v1/repositories/{repo}";
+	}
+
+}

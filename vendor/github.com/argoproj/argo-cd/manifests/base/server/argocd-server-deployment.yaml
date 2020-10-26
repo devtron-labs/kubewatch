@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/name: argocd-server
+    app.kubernetes.io/part-of: argocd
+    app.kubernetes.io/component: server
+  name: argocd-server
+spec:
+  selector:
+   matchLabels:
+    app.kubernetes.io/name: argocd-server
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: argocd-server
+    spec:
+      serviceAccountName: argocd-server
+      initContainers:
+      - name: ui
+        image: argoproj/argocd-ui:latest
+        imagePullPolicy: Always
+        command: [cp, -r, /app, /shared]
+        volumeMounts:
+        - mountPath: /shared
+          name: static-files
+      containers:
+      - name: argocd-server
+        image: argoproj/argocd:latest
+        imagePullPolicy: Always
+        command: [argocd-server, --staticassets, /shared/app]
+        volumeMounts:
+        - mountPath: /shared
+          name: static-files
+        ports:
+        - containerPort: 8080
+        - containerPort: 8083
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 3
+          periodSeconds: 30
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 3
+          periodSeconds: 30
+      volumes:
+      - emptyDir: {}
+        name: static-files

@@ -1,0 +1,98 @@
+
+# Gopkg.toml example
+#
+# Refer to https://github.com/golang/dep/blob/master/docs/Gopkg.toml.md
+# for detailed Gopkg.toml documentation.
+#
+# required = ["github.com/user/thing/cmd/thing"]
+# ignored = ["github.com/user/project/pkgX", "bitbucket.org/user/project/pkgA/pkgY"]
+#
+# [[constraint]]
+#   name = "github.com/user/project"
+#   version = "1.0.0"
+#
+# [[constraint]]
+#   name = "github.com/user/project2"
+#   branch = "dev"
+#   source = "github.com/myfork/project2"
+#
+# [[override]]
+#  name = "github.com/x/y"
+#  version = "2.4.0"
+
+[prune]
+  go-tests = true
+  unused-packages = true
+  [[prune.project]]
+      name = "github.com/argoproj/argo-cd"
+      non-go = false
+      unused-packages = false
+
+[[override]]
+  name = "github.com/sirupsen/logrus"
+  version = "1.4.2"
+
+
+[[constraint]]
+  name = "github.com/nlopes/slack"
+  version = "0.1.0"
+
+[[constraint]]
+  name = "github.com/spf13/cobra"
+  revision ="fe5e611709b0c57fa4a89136deaa8e1d4004d053"
+  #version = "0.0.1"
+
+[[constraint]]
+  name = "github.com/spf13/viper"
+  version = "1.0.0"
+
+[[constraint]]
+  name = "github.com/tbruyelle/hipchat-go"
+  version = "1.2.0"
+
+[[constraint]]
+  branch = "v2"
+  name = "gopkg.in/yaml.v2"
+
+[[override]]
+  #revision = "11147472b7c934c474a2c484af3c0c5210b7a3af"
+  branch = "release-1.12"
+  name = "k8s.io/api"
+
+[[override]]
+  #revision = "180eddb345a5be3a157cea1c624700ad5bd27b8f"
+  #version ="1.12.0"
+  branch = "release-1.12"
+  name = "k8s.io/apimachinery"
+
+[[override]]
+  name = "k8s.io/client-go"
+  branch = "release-9.0"
+
+  #version="v1.12.0"
+  #revision = "78700dec6369ba22221b72770783300f143df150"
+
+
+[[constraint]]
+  name = "github.com/argoproj/argo"
+  version = "2.3.0"
+
+[[override]]
+  name = "github.com/argoproj/pkg"
+  revision = "88ab0e836a8e8c70bc297c5764669bd7da27afd1"
+
+[[constraint]]
+  name = "github.com/nats-io/stan"
+  version = "0.5.0"
+
+[[constraint]]
+  name = "github.com/argoproj/argo-cd"
+  revision = "e0bd546a07818ec06a27c2b3033454e3eb1c4152"
+
+[[constraint]]
+  name = "gopkg.in/robfig/cron.v3"
+  version = "3.0.0"
+
+[[constraint]]
+  name = "gopkg.in/go-resty/resty.v2"
+  version = "2.1.0"
