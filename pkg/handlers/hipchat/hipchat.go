@@ -25,9 +25,9 @@ import (
 
 	"net/url"
 
-	"github.com/bitnami-labs/kubewatch/config"
-	"github.com/bitnami-labs/kubewatch/pkg/event"
-	kbEvent "github.com/bitnami-labs/kubewatch/pkg/event"
+	"github.com/devtron-labs/kubewatch/config"
+	"github.com/devtron-labs/kubewatch/pkg/event"
+	kbEvent "github.com/devtron-labs/kubewatch/pkg/event"
 )
 
 var hipchatColors = map[string]hipchat.Color{

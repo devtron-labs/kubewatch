@@ -21,7 +21,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/bitnami-labs/kubewatch/config"
+	"github.com/devtron-labs/kubewatch/config"
 )
 
 func TestSlackInit(t *testing.T) {
