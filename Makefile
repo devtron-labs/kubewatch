@@ -5,7 +5,7 @@ BINARY = kubewatch
 VERSION=
 BUILD=
 
-PKG            = github.com/bitnami-labs/kubewatch
+PKG            = github.com/devtron-labs/kubewatch
 TRAVIS_COMMIT ?= `git describe --tags`
 GOCMD          = go
 BUILD_DATE     = `date +%FT%T%z`

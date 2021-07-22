@@ -23,9 +23,9 @@ import (
 
 	"github.com/nlopes/slack"
 
-	"github.com/bitnami-labs/kubewatch/config"
-	"github.com/bitnami-labs/kubewatch/pkg/event"
-	kbEvent "github.com/bitnami-labs/kubewatch/pkg/event"
+	"github.com/devtron-labs/kubewatch/config"
+	"github.com/devtron-labs/kubewatch/pkg/event"
+	kbEvent "github.com/devtron-labs/kubewatch/pkg/event"
 )
 
 var slackColors = map[string]string{

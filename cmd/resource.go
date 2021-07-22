@@ -17,8 +17,8 @@ limitations under the License.
 package cmd
 
 import (
+	"github.com/devtron-labs/kubewatch/config"
 	"github.com/sirupsen/logrus"
-	"github.com/bitnami-labs/kubewatch/config"
 	"github.com/spf13/cobra"
 )
 

@@ -46,7 +46,7 @@ resourcesToWatch:
 
 image:
   registry: "686244538589.dkr.ecr.us-east-2.amazonaws.com"
-  repository: "bitnami-labs/kubewatch"
+  repository: "devtron-labs/kubewatch"
   tag: "latest"
   pullPolicy: "Always"
   ## Optionally specify an array of imagePullSecrets.

@@ -47,10 +47,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/bitnami-labs/kubewatch/config"
-	"github.com/bitnami-labs/kubewatch/pkg/event"
-	"github.com/bitnami-labs/kubewatch/pkg/handlers"
-	"github.com/bitnami-labs/kubewatch/pkg/utils"
+	"github.com/devtron-labs/kubewatch/config"
+	"github.com/devtron-labs/kubewatch/pkg/event"
+	"github.com/devtron-labs/kubewatch/pkg/handlers"
+	"github.com/devtron-labs/kubewatch/pkg/utils"
 	"github.com/sirupsen/logrus"
 
 	_ "github.com/argoproj/argo-cd/util/session"

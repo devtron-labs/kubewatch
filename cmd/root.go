@@ -20,9 +20,9 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/devtron-labs/kubewatch/config"
+	c "github.com/devtron-labs/kubewatch/pkg/client"
 	"github.com/sirupsen/logrus"
-	"github.com/bitnami-labs/kubewatch/config"
-	c "github.com/bitnami-labs/kubewatch/pkg/client"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
