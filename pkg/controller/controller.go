@@ -558,7 +558,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 				AddFunc: func(obj interface{}) {
 					log.Println("app added")
 					if app, ok := obj.(*v1alpha12.Application); ok {
-						log.Println("new app detected" + app.Name + " " + app.Status.Health.Status)
+						log.Println("new app detected: " + app.Name + " " + app.Status.Health.Status)
 						SendAppUpdate(app, client)
 					}
 				},
@@ -571,33 +571,25 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 									log.Println("new deployment detected")
 									SendAppUpdate(newApp, client)
 								} else {
+									log.Println("old deployment detected for update: name:" + oldApp.Name + ", status:" + oldApp.Status.Health.Status)
 									oldRevision := oldApp.Status.Sync.Revision
 									newRevision := newApp.Status.Sync.Revision
 									if oldRevision != newRevision {
 										SendAppUpdate(newApp, client)
+									} else {
+										log.Println("skip updating old app as old and new revision mismatch:" + oldApp.Name + ", newRevision:" + newRevision)
 									}
-									/*	oldAppHistory := oldApp.Status.History
-										newAppHistory := newApp.Status.History
-										sort.Slice(oldAppHistory, func(i, j int) bool {
-											return oldAppHistory[j].DeployedAt.Before(&oldAppHistory[i].DeployedAt)
-										})
-										sort.Slice(newAppHistory, func(i, j int) bool {
-											return newAppHistory[j].DeployedAt.Before(&newAppHistory[i].DeployedAt)
-										})
-										oldRev := oldAppHistory[0]
-										newRev := newAppHistory[0]
-										if oldRev.Revision != newRev.Revision {
-											log.Println("new deployment detected")
-											SendAppUpdate(newApp, client)
-											return
-										}*/
 								}
 							}
 							if oldApp.Status.Health.Status == newApp.Status.Health.Status {
 								return
 							}
 							SendAppUpdate(newApp, client)
+						} else {
+							log.Println("app update detected, but skip updating, there is no new app")
 						}
+					} else {
+						log.Println("app update detected, but skip updating, there is no old app")
 					}
 				},
 				DeleteFunc: func(obj interface{}) {},
@@ -683,7 +675,7 @@ func PublishEventsOnRest(jsonBody []byte, topic string, externalCdConfig *Extern
 		Post(externalCdConfig.ListenerUrl)
 
 	if err != nil {
-		log.Println("err in publishing over rest", "token ",externalCdConfig.Token, "body", publishRequest, err)
+		log.Println("err in publishing over rest", "token ", externalCdConfig.Token, "body", publishRequest, err)
 		return err
 	}
 	log.Println("res ", string(resp.Body()))
@@ -716,22 +708,22 @@ func FireDailyMinuteEvent() {
 
 func SendAppUpdate(app *v1alpha12.Application, client *PubSubClient) {
 	if client == nil {
-		log.Println("dont't send update")
+		log.Println("client is nil, don't send update")
 		return
 	}
 	appJson, err := json.Marshal(app)
 	if err != nil {
-		log.Println("err", err)
+		log.Println("marshal error on sending app update", err)
 		return
 	}
-	log.Println("app update event ", string(appJson))
+	log.Println("app update event for publish: ", string(appJson))
 	var reqBody = []byte(appJson)
 	err = client.Conn.Publish(appStatusUpdate, reqBody)
 	if err != nil {
-		log.Println("publish err", "err", err)
+		log.Println("publish err on app update event", "err", err)
 		return
 	}
-	log.Println("app update sent")
+	log.Println("app update sent for app: " + app.Name)
 }
 
 func NewPubSubClient() (*PubSubClient, error) {
