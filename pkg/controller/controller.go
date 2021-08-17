@@ -26,6 +26,10 @@ import (
 	"github.com/argoproj/argo-cd/pkg/client/informers/externalversions/application/v1alpha1"
 	"github.com/argoproj/argo/workflow/util"
 	"github.com/caarlos0/env"
+	"github.com/devtron-labs/kubewatch/vendor/github.com/hashicorp/go-uuid"
+	"github.com/devtron-labs/kubewatch/vendor/github.com/nats-io/nats.go"
+	"github.com/devtron-labs/kubewatch/vendor/gopkg.in/go-resty/resty.v2"
+	"github.com/devtron-labs/kubewatch/vendor/gopkg.in/robfig/cron.v3"
 	"github.com/hashicorp/go-uuid"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/stan"
@@ -40,10 +44,12 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/tools/clientcmd"
 	"log"
+	"math/rand"
 	"os"
 	"os/signal"
 	"os/user"
 	"path/filepath"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -737,7 +743,10 @@ func NewPubSubClient() (*PubSubClient, error) {
 		log.Println("err", err)
 		return &PubSubClient{}, err
 	}
-	sc, err := stan.Connect(cfg.ClusterId, cfg.ClientId, stan.NatsConn(nc))
+	s := rand.NewSource(time.Now().UnixNano())
+	uuid := rand.New(s)
+	uniqueClienId := "kubewatch-" + strconv.Itoa(uuid.Int())
+	sc, err := stan.Connect(cfg.ClusterId, uniqueClienId, stan.NatsConn(nc))
 	if err != nil {
 		log.Println("err", err)
 		return &PubSubClient{}, err
