@@ -549,12 +549,12 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 						}
 						if streamInfo == nil {
 							//Stream doesn't already exist. Create a new stream from jetStreamContext
-							_, error := client.JetStrCtxt.AddStream(&nats.StreamConfig{
+							_, err := client.JetStrCtxt.AddStream(&nats.StreamConfig{
 								Name:     cdWorkflowStatusUpdate,
 								Subjects: []string{cdWorkflowStatusUpdate + ".*"},
 							})
-							if error != nil {
-								log.Println("Error while creating stream", error)
+							if err != nil {
+								log.Println("Error while creating stream", err)
 							}
 						}
 
