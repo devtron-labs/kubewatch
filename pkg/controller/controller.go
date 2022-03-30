@@ -127,12 +127,6 @@ type AcdConfig struct {
 	ACDInformer  bool   `env:"ACD_INFORMER" envDefault:"true"`
 }
 
-const workflowStatusUpdate = "KUBEWATCH.WORKFLOW_STATUS_UPDATE"
-const appStatusUpdate = "KUBEWATCH.APPLICATION_STATUS_UPDATE"
-const deploymentFailureCheck = "KUBEWATCH.CRON_EVENTS"
-const cdWorkflowStatusUpdate = "KUBEWATCH.CD_WORKFLOW_STATUS_UPDATE"
-const KUBEWATCH_STREAM = "KUBEWATCH"
-
 type EventType int
 
 const Trigger EventType = 1
@@ -479,24 +473,13 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 							log.Println("dont't publish")
 							return
 						}
-						streamInfo, err := client.JetStrCtxt.StreamInfo(KUBEWATCH_STREAM)
+						err = AddStream(client.JetStrCtxt, KUBEWATCH_STREAM)
 						if err != nil {
-							log.Println("Error while getting stream info", err)
+							log.Fatal("Error while adding stream", "err", err)
 						}
-						if streamInfo == nil {
-							//Stream doesn't already exist. Create a new stream from jetStreamContext
-							_, error := client.JetStrCtxt.AddStream(&nats.StreamConfig{
-								Name:     KUBEWATCH_STREAM,
-								Subjects: []string{KUBEWATCH_STREAM + ".*"},
-							})
-							if error != nil {
-								log.Println("Error while creating stream", error)
-							}
-						}
-
 						//Generate random string for passing as Header Id in message
 						randString := "MsgHeaderId-" + utils.Generate(10)
-						_, err = client.JetStrCtxt.Publish(workflowStatusUpdate, reqBody, nats.MsgId(randString))
+						_, err = client.JetStrCtxt.Publish(WORKFLOW_STATUS_UPDATE_TOPIC, reqBody, nats.MsgId(randString))
 						if err != nil {
 							log.Println("Error while publishing Request", err)
 							return
@@ -543,25 +526,13 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 							log.Println("dont't publish")
 							return
 						}
-
-						streamInfo, err := client.JetStrCtxt.StreamInfo(KUBEWATCH_STREAM)
+						err = AddStream(client.JetStrCtxt, KUBEWATCH_STREAM)
 						if err != nil {
-							log.Println("Error while getting stream info", err)
+							log.Fatal("Error while adding stream", "error", err)
 						}
-						if streamInfo == nil {
-							//Stream doesn't already exist. Create a new stream from jetStreamContext
-							_, err := client.JetStrCtxt.AddStream(&nats.StreamConfig{
-								Name:     KUBEWATCH_STREAM,
-								Subjects: []string{KUBEWATCH_STREAM + ".*"},
-							})
-							if err != nil {
-								log.Println("Error while creating stream", err)
-							}
-						}
-
 						//Generate random string for passing as Header Id in message
 						randString := "MsgHeaderId-" + utils.Generate(10)
-						_, err = client.JetStrCtxt.Publish(cdWorkflowStatusUpdate, reqBody, nats.MsgId(randString))
+						_, err = client.JetStrCtxt.Publish(CD_WORKFLOW_STATUS_UPDATE, reqBody, nats.MsgId(randString))
 						if err != nil {
 							log.Println("Error while publishing Request", err)
 							return
@@ -666,7 +637,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 					log.Println("sending external cd workflow update event ", string(wfJson))
 					var reqBody = []byte(wfJson)
 
-					err = PublishEventsOnRest(reqBody, cdWorkflowStatusUpdate, externalCD)
+					err = PublishEventsOnRest(reqBody, CD_WORKFLOW_STATUS_UPDATE, externalCD)
 					if err != nil {
 						log.Println("publish cd err", "err", err)
 						return
@@ -733,24 +704,14 @@ func FireDailyMinuteEvent() {
 	log.Println("cron event", string(eventJson))
 	var reqBody = []byte(eventJson)
 
-	streamInfo, err := client.JetStrCtxt.StreamInfo(KUBEWATCH_STREAM)
+	err = AddStream(client.JetStrCtxt, KUBEWATCH_STREAM)
 	if err != nil {
-		log.Println("Error while getting stream info", err)
-	}
-	if streamInfo == nil {
-		//Stream doesn't already exist. Create a new stream from jetStreamContext
-		_, error := client.JetStrCtxt.AddStream(&nats.StreamConfig{
-			Name:     KUBEWATCH_STREAM,
-			Subjects: []string{KUBEWATCH_STREAM + ".*"},
-		})
-		if error != nil {
-			log.Println("Error while creating stream", error)
-		}
+		log.Fatal("Error while adding stream", "error", err)
 	}
 
 	//Generate random string for passing as Header Id in message
 	randString := "MsgHeaderId-" + utils.Generate(10)
-	_, err = client.JetStrCtxt.Publish(deploymentFailureCheck, reqBody, nats.MsgId(randString))
+	_, err = client.JetStrCtxt.Publish(CRON_EVENTS, reqBody, nats.MsgId(randString))
 	if err != nil {
 		log.Println("Error while publishing Request", err)
 		return
@@ -771,24 +732,14 @@ func SendAppUpdate(app *v1alpha12.Application, client *PubSubClient) {
 	log.Println("app update event for publish: ", string(appJson))
 	var reqBody = []byte(appJson)
 
-	streamInfo, err := client.JetStrCtxt.StreamInfo(KUBEWATCH_STREAM)
+	err = AddStream(client.JetStrCtxt, KUBEWATCH_STREAM)
 	if err != nil {
-		log.Println("Error while getting stream info", err)
-	}
-	if streamInfo == nil {
-		//Stream doesn't already exist. Create a new stream from jetStreamContext
-		_, error := client.JetStrCtxt.AddStream(&nats.StreamConfig{
-			Name:     KUBEWATCH_STREAM,
-			Subjects: []string{KUBEWATCH_STREAM + ".*"},
-		})
-		if error != nil {
-			log.Println("Error while creating stream", error)
-		}
+		log.Fatal("Error while adding stream", "error", err)
 	}
 
 	//Generate random string for passing as Header Id in message
 	randString := "MsgHeaderId-" + utils.Generate(10)
-	_, err = client.JetStrCtxt.Publish(appStatusUpdate, reqBody, nats.MsgId(randString))
+	_, err = client.JetStrCtxt.Publish(APPLICATION_STATUS_UPDATE_TOPIC, reqBody, nats.MsgId(randString))
 	if err != nil {
 		log.Println("Error while publishing Request", err)
 		return
