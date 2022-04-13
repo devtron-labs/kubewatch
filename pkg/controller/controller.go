@@ -449,7 +449,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 		if err != nil {
 			log.Panic("err", err)
 		}
-
+		log.Println("test workflow ciCfg", ciCfg)
 		if ciCfg.CiInformer {
 
 			informer := util.NewWorkflowInformer(cfg, ciCfg.DefaultNamespace, 0, nil)
@@ -462,7 +462,9 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 				UpdateFunc: func(oldWf interface{}, newWf interface{}) {
 					log.Println("workflow update detected")
 					if workflow, ok := newWf.(*unstructured.Unstructured).Object["status"]; ok {
+						log.Println("test workflow ", workflow)
 						wfJson, err := json.Marshal(workflow)
+						log.Println("test wfJson ", wfJson)
 						if err != nil {
 							log.Println("err", err)
 							return
