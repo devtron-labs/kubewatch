@@ -449,7 +449,8 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 		if err != nil {
 			log.Panic("err", err)
 		}
-		log.Println("test workflow ciCfg", ciCfg)
+		log.Println("test workflow ciCfg")
+		fmt.Printf("%+v\n", ciCfg)
 		if ciCfg.CiInformer {
 
 			informer := util.NewWorkflowInformer(cfg, ciCfg.DefaultNamespace, 0, nil)
