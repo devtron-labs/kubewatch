@@ -875,6 +875,7 @@ func (c *Controller) processItem(newEvent Event) error {
 	objectMeta := utils.GetObjectMetaData(obj)
 	c.logger.Errorf("Processing Item %+v\n", obj)
 	fmt.Printf("Processing Item %+v\n", obj)
+	fmt.Printf("Object Meta Data %+v\n", objectMeta)
 	// process events based on its type
 	switch newEvent.eventType {
 	case "create":
