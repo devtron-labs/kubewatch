@@ -1,7 +1,0 @@
-ignore:
-- "**/*.pb.go"
-- "**/*.pb.gw.go"
-- "**/*_test.go"
-- "pkg/apis/.*"
-- "pkg/client/.*"
-- "test/.*"

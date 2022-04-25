@@ -21,33 +21,30 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"log"
+	"os"
+	"os/signal"
+	"os/user"
+	"path/filepath"
+	"syscall"
+	"time"
+
 	v1alpha12 "github.com/argoproj/argo-cd/pkg/apis/application/v1alpha1"
 	"github.com/argoproj/argo-cd/pkg/client/clientset/versioned"
 	"github.com/argoproj/argo-cd/pkg/client/informers/externalversions/application/v1alpha1"
 	"github.com/argoproj/argo/workflow/util"
 	"github.com/caarlos0/env"
+	"github.com/go-resty/resty/v2"
 	"github.com/hashicorp/go-uuid"
 	"github.com/nats-io/nats.go"
-	"github.com/nats-io/stan"
-	"gopkg.in/go-resty/resty.v2"
-	"gopkg.in/robfig/cron.v3"
+	"github.com/robfig/cron/v3"
 	v13 "k8s.io/api/batch/v1"
-	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/tools/clientcmd"
-	"log"
-	"math/rand"
-	"os"
-	"os/signal"
-	"os/user"
-	"path/filepath"
-	"strconv"
-	"syscall"
-	"time"
 
 	"github.com/devtron-labs/kubewatch/config"
 	"github.com/devtron-labs/kubewatch/pkg/event"
@@ -56,6 +53,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	_ "github.com/argoproj/argo-cd/util/session"
+	v1 "k8s.io/api/core/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
@@ -99,13 +97,12 @@ type Controller struct {
 }
 
 type PubSubClient struct {
-	Conn stan.Conn
+	Conn       *nats.Conn
+	JetStrCtxt nats.JetStreamContext
 }
 
 type PubSubConfig struct {
 	NatsServerHost string `env:"NATS_SERVER_HOST" envDefault:"nats://devtron-nats.devtroncd:4222"`
-	ClusterId      string `env:"CLUSTER_ID" envDefault:"devtron-stan"`
-	ClientId       string `env:"CLIENT_ID" envDefault:"kubewatch"`
 }
 
 type CiConfig struct {
@@ -129,11 +126,6 @@ type AcdConfig struct {
 	ACDNamespace string `env:"ACD_NAMESPACE" envDefault:"devtroncd"`
 	ACDInformer  bool   `env:"ACD_INFORMER" envDefault:"true"`
 }
-
-const workflowStatusUpdate = "WORKFLOW_STATUS_UPDATE"
-const appStatusUpdate = "APPLICATION_STATUS_UPDATE"
-const deploymentFailureCheck = "CRON_EVENTS"
-const cdWorkflowStatusUpdate = "CD_WORKFLOW_STATUS_UPDATE"
 
 type EventType int
 
@@ -481,9 +473,15 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 							log.Println("dont't publish")
 							return
 						}
-						err = client.Conn.Publish(workflowStatusUpdate, reqBody)
+						err = AddStream(client.JetStrCtxt, KUBEWATCH_STREAM)
 						if err != nil {
-							log.Println("publish err", "err", err)
+							log.Fatal("Error while adding stream", "err", err)
+						}
+						//Generate random string for passing as Header Id in message
+						randString := "MsgHeaderId-" + utils.Generate(10)
+						_, err = client.JetStrCtxt.Publish(WORKFLOW_STATUS_UPDATE_TOPIC, reqBody, nats.MsgId(randString))
+						if err != nil {
+							log.Println("Error while publishing Request", err)
 							return
 						}
 						log.Println("workflow update sent")
@@ -528,9 +526,15 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 							log.Println("dont't publish")
 							return
 						}
-						err = client.Conn.Publish(cdWorkflowStatusUpdate, reqBody)
+						err = AddStream(client.JetStrCtxt, KUBEWATCH_STREAM)
 						if err != nil {
-							log.Println("publish cd err", "err", err)
+							log.Fatal("Error while adding stream", "error", err)
+						}
+						//Generate random string for passing as Header Id in message
+						randString := "MsgHeaderId-" + utils.Generate(10)
+						_, err = client.JetStrCtxt.Publish(CD_WORKFLOW_STATUS_UPDATE, reqBody, nats.MsgId(randString))
+						if err != nil {
+							log.Println("Error while publishing Request", err)
 							return
 						}
 						log.Println("cd workflow update sent")
@@ -633,7 +637,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 					log.Println("sending external cd workflow update event ", string(wfJson))
 					var reqBody = []byte(wfJson)
 
-					err = PublishEventsOnRest(reqBody, cdWorkflowStatusUpdate, externalCD)
+					err = PublishEventsOnRest(reqBody, CD_WORKFLOW_STATUS_UPDATE, externalCD)
 					if err != nil {
 						log.Println("publish cd err", "err", err)
 						return
@@ -671,7 +675,6 @@ func PublishEventsOnRest(jsonBody []byte, topic string, externalCdConfig *Extern
 	resp, err := client.SetRetryCount(4).R().
 		SetHeader("Content-Type", "application/json").
 		SetBody(publishRequest).
-
 		SetAuthToken(externalCdConfig.Token).
 		//SetResult().    // or SetResult(AuthSuccess{}).
 		Post(externalCdConfig.ListenerUrl)
@@ -700,9 +703,17 @@ func FireDailyMinuteEvent() {
 	}
 	log.Println("cron event", string(eventJson))
 	var reqBody = []byte(eventJson)
-	err = client.Conn.Publish(deploymentFailureCheck, reqBody)
+
+	err = AddStream(client.JetStrCtxt, KUBEWATCH_STREAM)
 	if err != nil {
-		log.Println("publish err", "err", err)
+		log.Fatal("Error while adding stream", "error", err)
+	}
+
+	//Generate random string for passing as Header Id in message
+	randString := "MsgHeaderId-" + utils.Generate(10)
+	_, err = client.JetStrCtxt.Publish(CRON_EVENTS, reqBody, nats.MsgId(randString))
+	if err != nil {
+		log.Println("Error while publishing Request", err)
 		return
 	}
 	log.Println("cron event sent")
@@ -720,9 +731,17 @@ func SendAppUpdate(app *v1alpha12.Application, client *PubSubClient) {
 	}
 	log.Println("app update event for publish: ", string(appJson))
 	var reqBody = []byte(appJson)
-	err = client.Conn.Publish(appStatusUpdate, reqBody)
+
+	err = AddStream(client.JetStrCtxt, KUBEWATCH_STREAM)
 	if err != nil {
-		log.Println("publish err on app update event", "err", err)
+		log.Fatal("Error while adding stream", "error", err)
+	}
+
+	//Generate random string for passing as Header Id in message
+	randString := "MsgHeaderId-" + utils.Generate(10)
+	_, err = client.JetStrCtxt.Publish(APPLICATION_STATUS_UPDATE_TOPIC, reqBody, nats.MsgId(randString))
+	if err != nil {
+		log.Println("Error while publishing Request", err)
 		return
 	}
 	log.Println("app update sent for app: " + app.Name)
@@ -739,16 +758,16 @@ func NewPubSubClient() (*PubSubClient, error) {
 		log.Println("err", err)
 		return &PubSubClient{}, err
 	}
-	s := rand.NewSource(time.Now().UnixNano())
-	uuid := rand.New(s)
-	uniqueClienId := "kubewatch-" + strconv.Itoa(uuid.Int())
-	sc, err := stan.Connect(cfg.ClusterId, uniqueClienId, stan.NatsConn(nc))
+	//create a jetstream context
+	js, err := nc.JetStream()
+
 	if err != nil {
-		log.Println("err", err)
-		return &PubSubClient{}, err
+		log.Println("err while creating jetstream context", err)
 	}
+
 	natsClient := &PubSubClient{
-		Conn: sc,
+		Conn:       nc,
+		JetStrCtxt: js,
 	}
 	return natsClient, nil
 }
