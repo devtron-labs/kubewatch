@@ -753,7 +753,17 @@ func NewPubSubClient() (*PubSubClient, error) {
 	if err != nil {
 		return &PubSubClient{}, err
 	}
-	nc, err := nats.Connect(cfg.NatsServerHost, nats.ReconnectWait(5*time.Second), nats.MaxReconnects(100))
+	nc, err := nats.Connect(cfg.NatsServerHost,
+		nats.ReconnectWait(10*time.Second), nats.MaxReconnects(100),
+		nats.DisconnectErrHandler(func(nc *nats.Conn, err error) {
+			log.Fatal("Got disconnected!", "Reason", err)
+		}),
+		nats.ReconnectHandler(func(nc *nats.Conn) {
+			log.Println("Got reconnected", "url", nc.ConnectedUrl())
+		}),
+		nats.ClosedHandler(func(nc *nats.Conn) {
+			log.Fatal("Connection closed!", "Reason", nc.LastError())
+		}))
 	if err != nil {
 		log.Println("err", err)
 		return &PubSubClient{}, err
