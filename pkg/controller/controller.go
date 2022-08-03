@@ -449,7 +449,8 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 		if err != nil {
 			log.Panic("err", err)
 		}
-
+		log.Println("test workflow ciCfg")
+		fmt.Printf("%+v\n", ciCfg)
 		if ciCfg.CiInformer {
 
 			informer := util.NewWorkflowInformer(cfg, ciCfg.DefaultNamespace, 0, nil)
@@ -462,7 +463,9 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 				UpdateFunc: func(oldWf interface{}, newWf interface{}) {
 					log.Println("workflow update detected")
 					if workflow, ok := newWf.(*unstructured.Unstructured).Object["status"]; ok {
+						log.Println("test workflow ", workflow)
 						wfJson, err := json.Marshal(workflow)
+						log.Println("test wfJson ", wfJson)
 						if err != nil {
 							log.Println("err", err)
 							return
@@ -557,6 +560,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 
 		if acdCfg.ACDInformer {
 			log.Println("starting acd informer")
+			log.Println(acdCfg)
 			clientset := versioned.NewForConfigOrDie(cfg)
 			acdInformer := v1alpha1.NewApplicationInformer(clientset, acdCfg.ACDNamespace, 0, nil)
 
@@ -565,6 +569,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 					log.Println("app added")
 					if app, ok := obj.(*v1alpha12.Application); ok {
 						log.Println("new app detected: " + app.Name + " " + app.Status.Health.Status)
+						log.Println(app)
 						SendAppUpdate(app, client)
 					}
 				},
@@ -901,6 +906,10 @@ func (c *Controller) processItem(newEvent Event) error {
 	objectMeta := utils.GetObjectMetaData(obj)
 	c.logger.Errorf("Processing Item %+v\n", obj)
 	fmt.Printf("Processing Item %+v\n", obj)
+
+	if len(objectMeta.Labels) != 0 && containsNot([]string{"ci", "cd"}, objectMeta.Labels["devtron.ai/workflow-purpose"]) {
+		return nil
+	}
 	// process events based on its type
 	switch newEvent.eventType {
 	case "create":
@@ -944,4 +953,13 @@ func getDevConfig() (*rest.Config, error) {
 		return nil, err
 	}
 	return cfg, nil
+}
+
+func containsNot(elems []string, v string) bool {
+	for _, s := range elems {
+		if v == s {
+			return false
+		}
+	}
+	return true
 }
