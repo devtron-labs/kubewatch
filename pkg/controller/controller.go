@@ -565,7 +565,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 					log.Println("app added")
 					if app, ok := obj.(*v1alpha12.Application); ok {
 						log.Println("new app detected: " + app.Name + " " + app.Status.Health.Status)
-						SendAppUpdate(app, client)
+						SendAppUpdate(app, client, nil)
 					}
 				},
 				UpdateFunc: func(old interface{}, new interface{}) {
@@ -575,13 +575,17 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 							if newApp.Status.History != nil && len(newApp.Status.History) > 0 {
 								if oldApp.Status.History == nil || len(oldApp.Status.History) == 0 {
 									log.Println("new deployment detected")
-									SendAppUpdate(newApp, client)
+									SendAppUpdate(newApp, client, nil)
 								} else {
 									log.Println("old deployment detected for update: name:" + oldApp.Name + ", status:" + oldApp.Status.Health.Status)
 									oldRevision := oldApp.Status.Sync.Revision
 									newRevision := newApp.Status.Sync.Revision
-									if oldRevision != newRevision {
-										SendAppUpdate(newApp, client)
+									oldReconciledAt := oldApp.Status.ReconciledAt
+									newReconciledAt := newApp.Status.ReconciledAt
+									oldStatus := oldApp.Status.Sync.Status
+									newStatus := newApp.Status.Sync.Status
+									if (oldRevision != newRevision) || (oldReconciledAt != newReconciledAt) || (oldStatus != newStatus) {
+										SendAppUpdate(newApp, client, oldApp)
 									} else {
 										log.Println("skip updating old app as old and new revision mismatch:" + oldApp.Name + ", newRevision:" + newRevision)
 									}
@@ -590,7 +594,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 							if oldApp.Status.Health.Status == newApp.Status.Health.Status {
 								return
 							}
-							SendAppUpdate(newApp, client)
+							SendAppUpdate(newApp, client, oldApp)
 						} else {
 							log.Println("app update detected, but skip updating, there is no new app")
 						}
@@ -719,12 +723,21 @@ func FireDailyMinuteEvent() {
 	log.Println("cron event sent")
 }
 
-func SendAppUpdate(app *v1alpha12.Application, client *PubSubClient) {
+type ApplicationDetail struct {
+	Application    *v1alpha12.Application `json:"application"`
+	OldApplication *v1alpha12.Application `json:"oldApplication"`
+}
+
+func SendAppUpdate(app *v1alpha12.Application, client *PubSubClient, oldApp *v1alpha12.Application) {
 	if client == nil {
 		log.Println("client is nil, don't send update")
 		return
 	}
-	appJson, err := json.Marshal(app)
+	appDetail := ApplicationDetail{
+		Application:    app,
+		OldApplication: oldApp,
+	}
+	appJson, err := json.Marshal(appDetail)
 	if err != nil {
 		log.Println("marshal error on sending app update", err)
 		return
