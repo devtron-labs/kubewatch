@@ -124,8 +124,8 @@ func getMaxAge() time.Duration {
 	natsMaxAgeStr := os.Getenv("NATS_STREAM_MAX_AGE")
 	msgMaxAge, err := strconv.Atoi(natsMaxAgeStr)
 	if err != nil {
-		log.Println("error occurred while converting maxAge to integer")
+		log.Println("error occurred while converting maxAge to integer", "natsMaxAgeStr", natsMaxAgeStr, "error", err)
 		msgMaxAge = MSG_MAX_AGE
 	}
-	return time.Duration(msgMaxAge)
+	return time.Duration(msgMaxAge) * time.Second
 }
