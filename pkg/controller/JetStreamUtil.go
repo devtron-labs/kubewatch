@@ -18,6 +18,9 @@ package controller
 
 import (
 	"log"
+	"os"
+	"strconv"
+	"time"
 
 	"github.com/nats-io/nats.go"
 )
@@ -57,6 +60,7 @@ const (
 	NEW_CI_MATERIAL_TOPIC             string = "NEW-CI-MATERIAL"
 	NEW_CI_MATERIAL_TOPIC_GROUP       string = "NEW-CI-MATERIAL_GROUP-1"
 	NEW_CI_MATERIAL_TOPIC_DURABLE     string = "NEW-CI-MATERIAL_DURABLE-1"
+	MSG_MAX_AGE                       int    = 86400
 )
 
 var ORCHESTRATOR_SUBJECTS = []string{BULK_APPSTORE_DEPLOY_TOPIC, BULK_DEPLOY_TOPIC, BULK_HIBERNATE_TOPIC}
@@ -81,6 +85,7 @@ func GetStreamSubjects(streamName string) []string {
 
 func AddStream(js nats.JetStreamContext, streamNames ...string) error {
 	var err error
+	msgMaxAge := getMaxAge()
 	for _, streamName := range streamNames {
 		streamInfo, err := js.StreamInfo(streamName)
 		if err == nats.ErrStreamNotFound || streamInfo == nil {
@@ -89,6 +94,7 @@ func AddStream(js nats.JetStreamContext, streamNames ...string) error {
 			_, err = js.AddStream(&nats.StreamConfig{
 				Name:     streamName,
 				Subjects: GetStreamSubjects(streamName),
+				MaxAge:   msgMaxAge,
 			})
 			if err != nil {
 				log.Fatal("Error while creating stream", "stream name", streamName, "error", err)
@@ -97,6 +103,29 @@ func AddStream(js nats.JetStreamContext, streamNames ...string) error {
 		} else if err != nil {
 			log.Fatal("Error while getting stream info", "stream name", streamName, "error", err)
 		}
+		config := streamInfo.Config
+		if config.MaxAge != msgMaxAge {
+			_, err := js.UpdateStream(&nats.StreamConfig{
+				Name:     streamName,
+				Subjects: GetStreamSubjects(streamName),
+				MaxAge:   msgMaxAge,
+			})
+			if err != nil {
+				log.Println("error occurred while updating stream for maxAge config", "streamName", streamName, "error", err)
+			} else {
+				log.Println("stream updated successfully with maxAge config", "old", config.MaxAge, "new", msgMaxAge)
+			}
+		}
 	}
 	return err
+}
+
+func getMaxAge() time.Duration {
+	natsMaxAgeStr := os.Getenv("NATS_STREAM_MAX_AGE")
+	msgMaxAge, err := strconv.Atoi(natsMaxAgeStr)
+	if err != nil {
+		log.Println("error occurred while converting maxAge to integer")
+		msgMaxAge = MSG_MAX_AGE
+	}
+	return time.Duration(msgMaxAge)
 }
