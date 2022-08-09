@@ -733,9 +733,28 @@ func SendAppUpdate(app *v1alpha12.Application, client *PubSubClient, oldApp *v1a
 		log.Println("client is nil, don't send update")
 		return
 	}
+	var newAppCopy, oldAppCopy *v1alpha12.Application
+
+	if app != nil {
+		newAppCopy = app.DeepCopy()
+		//nil check not required for `newAppCopy.Status` as its object
+		newAppCopy.Status.Resources = nil
+		if newAppCopy.Status.OperationState != nil {
+			newAppCopy.Status.OperationState.SyncResult = nil
+		}
+	}
+	if oldApp != nil {
+		oldAppCopy = oldApp.DeepCopy()
+		//nil check not required for `newAppCopy.Status` as its object
+		oldAppCopy.Status.Resources = nil
+		if oldAppCopy.Status.OperationState != nil {
+			oldAppCopy.Status.OperationState.SyncResult = nil
+		}
+	}
+
 	appDetail := ApplicationDetail{
-		Application:    app,
-		OldApplication: oldApp,
+		Application:    newAppCopy,
+		OldApplication: oldAppCopy,
 	}
 	appJson, err := json.Marshal(appDetail)
 	if err != nil {
