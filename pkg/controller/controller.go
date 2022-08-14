@@ -36,7 +36,6 @@ import (
 	"github.com/caarlos0/env"
 	"github.com/go-resty/resty/v2"
 	"github.com/hashicorp/go-uuid"
-	"github.com/nats-io/nats.go"
 	"github.com/robfig/cron/v3"
 	v13 "k8s.io/api/batch/v1"
 	"k8s.io/api/extensions/v1beta1"
@@ -53,13 +52,14 @@ import (
 	"github.com/sirupsen/logrus"
 
 	_ "github.com/argoproj/argo-cd/util/session"
+	"github.com/devtron-labs/common-lib/nats-lib"
+	libUtils "github.com/devtron-labs/common-lib/utils"
 	v1 "k8s.io/api/core/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/util/workqueue"
 )
 
 const maxRetries = 5
@@ -96,11 +96,6 @@ type Controller struct {
 	eventHandler handlers.Handler
 }
 
-type PubSubClient struct {
-	Conn       *nats.Conn
-	JetStrCtxt nats.JetStreamContext
-}
-
 type PubSubConfig struct {
 	NatsServerHost string `env:"NATS_SERVER_HOST" envDefault:"nats://devtron-nats.devtroncd:4222"`
 }
@@ -135,7 +130,8 @@ const Fail EventType = 3
 
 const cronMinuteWiseEventName string = "minute-event"
 
-var client *PubSubClient
+//var client *PubSubClient
+var pubSubClient *nats_lib.PubSubClientServiceImpl
 
 func Start(conf *config.Config, eventHandler handlers.Handler) {
 	var kubeClient kubernetes.Interface
@@ -439,10 +435,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 	}
 
 	if !externalCD.External {
-		client, err = NewPubSubClient()
-		if err != nil {
-			log.Panic("err", err)
-		}
+		pubSubClient, err = NewPubSubClient()
 
 		ciCfg := &CiConfig{}
 		err = env.Parse(ciCfg)
@@ -468,18 +461,12 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 							return
 						}
 						log.Println("sending workflow update event ", string(wfJson))
-						var reqBody = []byte(wfJson)
-						if client == nil {
+						//var reqBody = []byte(wfJson)
+						if pubSubClient == nil {
 							log.Println("dont't publish")
 							return
 						}
-						err = AddStream(client.JetStrCtxt, KUBEWATCH_STREAM)
-						if err != nil {
-							log.Fatal("Error while adding stream", "err", err)
-						}
-						//Generate random string for passing as Header Id in message
-						randString := "MsgHeaderId-" + utils.Generate(10)
-						_, err = client.JetStrCtxt.Publish(WORKFLOW_STATUS_UPDATE_TOPIC, reqBody, nats.MsgId(randString))
+						err = pubSubClient.Publish(WORKFLOW_STATUS_UPDATE_TOPIC, string(wfJson))
 						if err != nil {
 							log.Println("Error while publishing Request", err)
 							return
@@ -522,17 +509,11 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 						}
 						log.Println("sending cd workflow update event ", string(wfJson))
 						var reqBody = []byte(wfJson)
-						if client == nil {
+						if pubSubClient == nil {
 							log.Println("dont't publish")
 							return
 						}
-						err = AddStream(client.JetStrCtxt, KUBEWATCH_STREAM)
-						if err != nil {
-							log.Fatal("Error while adding stream", "error", err)
-						}
-						//Generate random string for passing as Header Id in message
-						randString := "MsgHeaderId-" + utils.Generate(10)
-						_, err = client.JetStrCtxt.Publish(CD_WORKFLOW_STATUS_UPDATE, reqBody, nats.MsgId(randString))
+						err = pubSubClient.Publish(CD_WORKFLOW_STATUS_UPDATE, string(reqBody))
 						if err != nil {
 							log.Println("Error while publishing Request", err)
 							return
@@ -565,7 +546,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 					log.Println("app added")
 					if app, ok := obj.(*v1alpha12.Application); ok {
 						log.Println("new app detected: " + app.Name + " " + app.Status.Health.Status)
-						SendAppUpdate(app, client, nil)
+						SendAppUpdate(app, pubSubClient, nil)
 					}
 				},
 				UpdateFunc: func(old interface{}, new interface{}) {
@@ -575,7 +556,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 							if newApp.Status.History != nil && len(newApp.Status.History) > 0 {
 								if oldApp.Status.History == nil || len(oldApp.Status.History) == 0 {
 									log.Println("new deployment detected")
-									SendAppUpdate(newApp, client, nil)
+									SendAppUpdate(newApp, pubSubClient, nil)
 								} else {
 									log.Println("old deployment detected for update: name:" + oldApp.Name + ", status:" + oldApp.Status.Health.Status)
 									oldRevision := oldApp.Status.Sync.Revision
@@ -585,7 +566,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 									oldStatus := oldApp.Status.Sync.Status
 									newStatus := newApp.Status.Sync.Status
 									if (oldRevision != newRevision) || (oldReconciledAt != newReconciledAt) || (oldStatus != newStatus) {
-										SendAppUpdate(newApp, client, oldApp)
+										SendAppUpdate(newApp, pubSubClient, oldApp)
 									} else {
 										log.Println("skip updating old app as old and new revision mismatch:" + oldApp.Name + ", newRevision:" + newRevision)
 									}
@@ -594,7 +575,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 							if oldApp.Status.Health.Status == newApp.Status.Health.Status {
 								return
 							}
-							SendAppUpdate(newApp, client, oldApp)
+							SendAppUpdate(newApp, pubSubClient, oldApp)
 						} else {
 							log.Println("app update detected, but skip updating, there is no new app")
 						}
@@ -708,14 +689,7 @@ func FireDailyMinuteEvent() {
 	log.Println("cron event", string(eventJson))
 	var reqBody = []byte(eventJson)
 
-	err = AddStream(client.JetStrCtxt, KUBEWATCH_STREAM)
-	if err != nil {
-		log.Fatal("Error while adding stream", "error", err)
-	}
-
-	//Generate random string for passing as Header Id in message
-	randString := "MsgHeaderId-" + utils.Generate(10)
-	_, err = client.JetStrCtxt.Publish(CRON_EVENTS, reqBody, nats.MsgId(randString))
+	err = pubSubClient.Publish(CRON_EVENTS, string(reqBody))
 	if err != nil {
 		log.Println("Error while publishing Request", err)
 		return
@@ -728,8 +702,8 @@ type ApplicationDetail struct {
 	OldApplication *v1alpha12.Application `json:"oldApplication"`
 }
 
-func SendAppUpdate(app *v1alpha12.Application, client *PubSubClient, oldApp *v1alpha12.Application) {
-	if client == nil {
+func SendAppUpdate(app *v1alpha12.Application, pubSubClient *nats_lib.PubSubClientServiceImpl, oldApp *v1alpha12.Application) {
+	if pubSubClient == nil {
 		log.Println("client is nil, don't send update")
 		return
 	}
@@ -745,14 +719,8 @@ func SendAppUpdate(app *v1alpha12.Application, client *PubSubClient, oldApp *v1a
 	log.Println("app update event for publish: ", string(appJson))
 	var reqBody = []byte(appJson)
 
-	err = AddStream(client.JetStrCtxt, KUBEWATCH_STREAM)
-	if err != nil {
-		log.Fatal("Error while adding stream", "error", err)
-	}
-
-	//Generate random string for passing as Header Id in message
-	randString := "MsgHeaderId-" + utils.Generate(10)
-	_, err = client.JetStrCtxt.Publish(APPLICATION_STATUS_UPDATE_TOPIC, reqBody, nats.MsgId(randString))
+	err = pubSubClient.Publish(APPLICATION_STATUS_UPDATE_TOPIC, string(reqBody))
+	//_, err = client.JetStrCtxt.Publish(APPLICATION_STATUS_UPDATE_TOPIC, reqBody, nats.MsgId(randString))
 	if err != nil {
 		log.Println("Error while publishing Request", err)
 		return
@@ -760,39 +728,10 @@ func SendAppUpdate(app *v1alpha12.Application, client *PubSubClient, oldApp *v1a
 	log.Println("app update sent for app: " + app.Name)
 }
 
-func NewPubSubClient() (*PubSubClient, error) {
-	cfg := &PubSubConfig{}
-	err := env.Parse(cfg)
-	if err != nil {
-		return &PubSubClient{}, err
-	}
-	nc, err := nats.Connect(cfg.NatsServerHost,
-		nats.ReconnectWait(10*time.Second), nats.MaxReconnects(100),
-		nats.DisconnectErrHandler(func(nc *nats.Conn, err error) {
-			log.Println("Nats Connection got disconnected!", "Reason", err)
-		}),
-		nats.ReconnectHandler(func(nc *nats.Conn) {
-			log.Println("Nats Connection got reconnected", "url", nc.ConnectedUrl())
-		}),
-		nats.ClosedHandler(func(nc *nats.Conn) {
-			log.Println("Nats Client Connection closed!", "Reason", nc.LastError())
-		}))
-	if err != nil {
-		log.Println("err", err)
-		return &PubSubClient{}, err
-	}
-	//create a jetstream context
-	js, err := nc.JetStream()
-
-	if err != nil {
-		log.Println("err while creating jetstream context", err)
-	}
-
-	natsClient := &PubSubClient{
-		Conn:       nc,
-		JetStrCtxt: js,
-	}
-	return natsClient, nil
+func NewPubSubClient() (*nats_lib.PubSubClientServiceImpl, error) {
+	logger, _ := libUtils.NewSugardLogger()
+	pubSubClient := nats_lib.NewPubSubClientServiceImpl(logger)
+	return pubSubClient, nil
 }
 
 func newResourceController(client kubernetes.Interface, eventHandler handlers.Handler, informer cache.SharedIndexInformer, resourceType string) *Controller {
