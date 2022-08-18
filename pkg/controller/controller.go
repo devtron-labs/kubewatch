@@ -136,8 +136,8 @@ var pubSubClient *pubsub_lib.PubSubClientServiceImpl
 
 func Start(conf *config.Config, eventHandler handlers.Handler) {
 	var kubeClient kubernetes.Interface
-	cfg, err := getDevConfig()
-	//cfg, err := rest.InClusterConfig()
+	//cfg, err := getDevConfig()
+	cfg, err := rest.InClusterConfig()
 	if err != nil {
 		kubeClient = utils.GetClientOutOfCluster()
 	} else {
