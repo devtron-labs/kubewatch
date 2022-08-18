@@ -65,9 +65,9 @@ github.com/coreos/go-oidc
 # github.com/davecgh/go-spew v1.1.1
 ## explicit
 github.com/davecgh/go-spew/spew
-# github.com/devtron-labs/common-lib v0.0.0-20220814130303-d71cc75fa36f
+# github.com/devtron-labs/common-lib v0.0.0-20220818072201-4662bafeb562
 ## explicit; go 1.18
-github.com/devtron-labs/common-lib/nats-lib
+github.com/devtron-labs/common-lib/pubsub-lib
 github.com/devtron-labs/common-lib/utils
 # github.com/dgrijalva/jwt-go v3.2.0+incompatible
 ## explicit

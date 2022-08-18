@@ -15,7 +15,7 @@
  *
  */
 
-package nats_lib
+package pubsub_lib
 
 import (
 	"github.com/nats-io/nats.go"
@@ -168,6 +168,5 @@ func getNewConfig(streamName string, toUpdateConfig *nats.StreamConfig) *nats.St
 	if toUpdateConfig.Retention != nats.RetentionPolicy(0) {
 		cfg.Retention = toUpdateConfig.Retention
 	}
-	cfg.Retention = nats.RetentionPolicy(2)
 	return cfg
 }

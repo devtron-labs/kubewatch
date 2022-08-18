@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	pubsub_lib "github.com/devtron-labs/common-lib/pubsub-lib"
 	"log"
 	"os"
 	"os/signal"
@@ -52,7 +53,6 @@ import (
 	"github.com/sirupsen/logrus"
 
 	_ "github.com/argoproj/argo-cd/util/session"
-	"github.com/devtron-labs/common-lib/nats-lib"
 	libUtils "github.com/devtron-labs/common-lib/utils"
 	v1 "k8s.io/api/core/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -98,7 +98,7 @@ type Controller struct {
 }
 
 type PubSubConfig struct {
-	NatsServerHost string `env:"NATS_SERVER_HOST" envDefault:"nats://devtron-nats.devtroncd:4222"`
+	NatsServerHost string `env:"NATS_SERVER_HOST" envDefault:"nats://localhost:4222"`
 }
 
 type CiConfig struct {
@@ -132,12 +132,12 @@ const Fail EventType = 3
 const cronMinuteWiseEventName string = "minute-event"
 
 //var client *PubSubClient
-var pubSubClient *nats_lib.PubSubClientServiceImpl
+var pubSubClient *pubsub_lib.PubSubClientServiceImpl
 
 func Start(conf *config.Config, eventHandler handlers.Handler) {
 	var kubeClient kubernetes.Interface
-	//cfg, err := getDevConfig()
-	cfg, err := rest.InClusterConfig()
+	cfg, err := getDevConfig()
+	//cfg, err := rest.InClusterConfig()
 	if err != nil {
 		kubeClient = utils.GetClientOutOfCluster()
 	} else {
@@ -467,7 +467,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 							log.Println("dont't publish")
 							return
 						}
-						err = pubSubClient.Publish(nats_lib.WORKFLOW_STATUS_UPDATE_TOPIC, string(wfJson))
+						err = pubSubClient.Publish(pubsub_lib.WORKFLOW_STATUS_UPDATE_TOPIC, string(wfJson))
 						if err != nil {
 							log.Println("Error while publishing Request", err)
 							return
@@ -514,7 +514,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 							log.Println("dont't publish")
 							return
 						}
-						err = pubSubClient.Publish(nats_lib.CD_WORKFLOW_STATUS_UPDATE, string(reqBody))
+						err = pubSubClient.Publish(pubsub_lib.CD_WORKFLOW_STATUS_UPDATE, string(reqBody))
 						if err != nil {
 							log.Println("Error while publishing Request", err)
 							return
@@ -623,7 +623,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 					log.Println("sending external cd workflow update event ", string(wfJson))
 					var reqBody = []byte(wfJson)
 
-					err = PublishEventsOnRest(reqBody, nats_lib.CD_WORKFLOW_STATUS_UPDATE, externalCD)
+					err = PublishEventsOnRest(reqBody, pubsub_lib.CD_WORKFLOW_STATUS_UPDATE, externalCD)
 					if err != nil {
 						log.Println("publish cd err", "err", err)
 						return
@@ -690,7 +690,7 @@ func FireDailyMinuteEvent() {
 	log.Println("cron event", string(eventJson))
 	var reqBody = []byte(eventJson)
 
-	err = pubSubClient.Publish(nats_lib.CRON_EVENTS, string(reqBody))
+	err = pubSubClient.Publish(pubsub_lib.CRON_EVENTS, string(reqBody))
 	if err != nil {
 		log.Println("Error while publishing Request", err)
 		return
@@ -703,7 +703,7 @@ type ApplicationDetail struct {
 	OldApplication *v1alpha12.Application `json:"oldApplication"`
 }
 
-func SendAppUpdate(app *v1alpha12.Application, pubSubClient *nats_lib.PubSubClientServiceImpl, oldApp *v1alpha12.Application) {
+func SendAppUpdate(app *v1alpha12.Application, pubSubClient *pubsub_lib.PubSubClientServiceImpl, oldApp *v1alpha12.Application) {
 	if pubSubClient == nil {
 		log.Println("client is nil, don't send update")
 		return
@@ -739,7 +739,7 @@ func SendAppUpdate(app *v1alpha12.Application, pubSubClient *nats_lib.PubSubClie
 	log.Println("app update event for publish: ", string(appJson))
 	var reqBody = []byte(appJson)
 
-	err = pubSubClient.Publish(nats_lib.APPLICATION_STATUS_UPDATE_TOPIC, string(reqBody))
+	err = pubSubClient.Publish(pubsub_lib.APPLICATION_STATUS_UPDATE_TOPIC, string(reqBody))
 	//_, err = client.JetStrCtxt.Publish(APPLICATION_STATUS_UPDATE_TOPIC, reqBody, nats.MsgId(randString))
 	if err != nil {
 		log.Println("Error while publishing Request", err)
@@ -748,9 +748,9 @@ func SendAppUpdate(app *v1alpha12.Application, pubSubClient *nats_lib.PubSubClie
 	log.Println("app update sent for app: " + app.Name)
 }
 
-func NewPubSubClient() (*nats_lib.PubSubClientServiceImpl, error) {
+func NewPubSubClient() (*pubsub_lib.PubSubClientServiceImpl, error) {
 	logger, _ := libUtils.NewSugardLogger()
-	pubSubClient := nats_lib.NewPubSubClientServiceImpl(logger)
+	pubSubClient := pubsub_lib.NewPubSubClientServiceImpl(logger)
 	return pubSubClient, nil
 }
 

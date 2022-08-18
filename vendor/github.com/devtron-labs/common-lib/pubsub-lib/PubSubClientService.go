@@ -1,4 +1,4 @@
-package nats_lib
+package pubsub_lib
 
 import (
 	"github.com/devtron-labs/common-lib/utils"
