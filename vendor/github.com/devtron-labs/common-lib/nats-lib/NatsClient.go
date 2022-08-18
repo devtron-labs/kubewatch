@@ -34,7 +34,7 @@ type NatsClient struct {
 }
 
 type NatsClientConfig struct {
-	NatsServerHost   string `env:"NATS_SERVER_HOST" envDefault:"nats://localhost:4222"`
+	NatsServerHost   string `env:"NATS_SERVER_HOST" envDefault:"nats://devtron-nats.devtroncd:4222"`
 	NatsStreamConfig string `env:"NATS_STREAM_CONFIG" envDefault:"{}"`
 }
 

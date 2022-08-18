@@ -60,6 +60,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/util/workqueue"
 )
 
 const maxRetries = 5
@@ -135,7 +136,7 @@ var pubSubClient *nats_lib.PubSubClientServiceImpl
 
 func Start(conf *config.Config, eventHandler handlers.Handler) {
 	var kubeClient kubernetes.Interface
-	//cfg, _ := getDevConfig()
+	//cfg, err := getDevConfig()
 	cfg, err := rest.InClusterConfig()
 	if err != nil {
 		kubeClient = utils.GetClientOutOfCluster()
@@ -466,7 +467,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 							log.Println("dont't publish")
 							return
 						}
-						err = pubSubClient.Publish(WORKFLOW_STATUS_UPDATE_TOPIC, string(wfJson))
+						err = pubSubClient.Publish(nats_lib.WORKFLOW_STATUS_UPDATE_TOPIC, string(wfJson))
 						if err != nil {
 							log.Println("Error while publishing Request", err)
 							return
@@ -513,7 +514,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 							log.Println("dont't publish")
 							return
 						}
-						err = pubSubClient.Publish(CD_WORKFLOW_STATUS_UPDATE, string(reqBody))
+						err = pubSubClient.Publish(nats_lib.CD_WORKFLOW_STATUS_UPDATE, string(reqBody))
 						if err != nil {
 							log.Println("Error while publishing Request", err)
 							return
@@ -622,7 +623,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 					log.Println("sending external cd workflow update event ", string(wfJson))
 					var reqBody = []byte(wfJson)
 
-					err = PublishEventsOnRest(reqBody, CD_WORKFLOW_STATUS_UPDATE, externalCD)
+					err = PublishEventsOnRest(reqBody, nats_lib.CD_WORKFLOW_STATUS_UPDATE, externalCD)
 					if err != nil {
 						log.Println("publish cd err", "err", err)
 						return
@@ -689,7 +690,7 @@ func FireDailyMinuteEvent() {
 	log.Println("cron event", string(eventJson))
 	var reqBody = []byte(eventJson)
 
-	err = pubSubClient.Publish(CRON_EVENTS, string(reqBody))
+	err = pubSubClient.Publish(nats_lib.CRON_EVENTS, string(reqBody))
 	if err != nil {
 		log.Println("Error while publishing Request", err)
 		return
@@ -738,7 +739,7 @@ func SendAppUpdate(app *v1alpha12.Application, pubSubClient *nats_lib.PubSubClie
 	log.Println("app update event for publish: ", string(appJson))
 	var reqBody = []byte(appJson)
 
-	err = pubSubClient.Publish(APPLICATION_STATUS_UPDATE_TOPIC, string(reqBody))
+	err = pubSubClient.Publish(nats_lib.APPLICATION_STATUS_UPDATE_TOPIC, string(reqBody))
 	//_, err = client.JetStrCtxt.Publish(APPLICATION_STATUS_UPDATE_TOPIC, reqBody, nats.MsgId(randString))
 	if err != nil {
 		log.Println("Error while publishing Request", err)

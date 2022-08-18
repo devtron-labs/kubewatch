@@ -6,6 +6,7 @@ require (
 	github.com/argoproj/argo v2.3.0+incompatible
 	github.com/argoproj/argo-cd v1.0.2
 	github.com/caarlos0/env v3.5.0+incompatible
+	github.com/devtron-labs/common-lib v0.0.0-20220814130303-d71cc75fa36f
 	github.com/go-resty/resty/v2 v2.7.0
 	github.com/hashicorp/go-uuid v1.0.1
 	github.com/nlopes/slack v0.1.0
@@ -14,7 +15,7 @@ require (
 	github.com/spf13/cobra v0.0.4-0.20181021141114-fe5e611709b0
 	github.com/spf13/viper v1.4.0
 	github.com/tbruyelle/hipchat-go v0.0.0-20160921153256-749fb9e14beb
-	gopkg.in/yaml.v2 v2.2.3-0.20190319135612-7b8349ac747c
+	gopkg.in/yaml.v2 v2.2.8
 	k8s.io/api v0.0.0-20190704094832-ee9c4073cffa
 	k8s.io/apimachinery v0.0.0-20190704094520-6f131bee5e2c
 	k8s.io/client-go v0.0.0-20190704095228-386e588352a4
@@ -27,7 +28,6 @@ require (
 	github.com/colinmarc/hdfs v1.1.4-0.20180802165501-48eb8d6c34a9 // indirect
 	github.com/coreos/go-oidc v2.1.0+incompatible // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/devtron-labs/common-lib v0.0.0-20220814130303-d71cc75fa36f // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
 	github.com/docker/spdystream v0.0.0-20181023171402-6480d4af844c // indirect
 	github.com/elazarl/goproxy v0.0.0-20220115173737-adb46da277ac // indirect
@@ -60,14 +60,17 @@ require (
 	github.com/jcmturner/gofork v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.6 // indirect
 	github.com/kevinburke/ssh_config v0.0.0-20190725054713-01f96b0aa0cd // indirect
+	github.com/klauspost/compress v1.14.4 // indirect
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/magiconair/properties v1.8.1 // indirect
 	github.com/mailru/easyjson v0.0.0-20190626092158-b2ccc519800e // indirect
+	github.com/minio/highwayhash v1.0.2 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/mapstructure v1.1.2 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v0.0.0-20180701023420-4b7aa43c6742 // indirect
-	github.com/nats-io/nats-server/v2 v2.8.4 // indirect
+	github.com/nats-io/jwt/v2 v2.2.1-0.20220330180145-442af02fd36a // indirect
+	github.com/nats-io/nats.go v1.15.0 // indirect
 	github.com/nats-io/nkeys v0.3.0 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
 	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
@@ -85,6 +88,9 @@ require (
 	github.com/valyala/fasttemplate v1.0.1 // indirect
 	github.com/vmihailenco/msgpack v4.0.4+incompatible // indirect
 	github.com/xanzy/ssh-agent v0.2.1 // indirect
+	go.uber.org/atomic v1.7.0 // indirect
+	go.uber.org/multierr v1.6.0 // indirect
+	go.uber.org/zap v1.21.0 // indirect
 	golang.org/x/crypto v0.0.0-20220315160706-3147a52a75dd // indirect
 	golang.org/x/net v0.0.0-20211112202133-69e39bad7dc2 // indirect
 	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45 // indirect

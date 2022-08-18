@@ -65,7 +65,7 @@ github.com/coreos/go-oidc
 # github.com/davecgh/go-spew v1.1.1
 ## explicit
 github.com/davecgh/go-spew/spew
-# github.com/devtron-labs/common-lib v0.0.0-20220814121839-725218404547
+# github.com/devtron-labs/common-lib v0.0.0-20220814130303-d71cc75fa36f
 ## explicit; go 1.18
 github.com/devtron-labs/common-lib/nats-lib
 github.com/devtron-labs/common-lib/utils
@@ -720,6 +720,7 @@ k8s.io/client-go/util/flowcontrol
 k8s.io/client-go/util/homedir
 k8s.io/client-go/util/integer
 k8s.io/client-go/util/retry
+k8s.io/client-go/util/workqueue
 # k8s.io/kube-openapi v0.0.0-20190603182131-db7b694dc208
 ## explicit; go 1.12
 k8s.io/kube-openapi/pkg/common
