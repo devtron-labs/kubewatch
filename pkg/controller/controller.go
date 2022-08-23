@@ -580,8 +580,8 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 									log.Println("old deployment detected for update: name:" + oldApp.Name + ", status:" + oldApp.Status.Health.Status)
 									oldRevision := oldApp.Status.Sync.Revision
 									newRevision := newApp.Status.Sync.Revision
-									oldStatus := string(oldApp.Status.Sync.Status)
-									newStatus := string(newApp.Status.Sync.Status)
+									oldStatus := string(oldApp.Status.Health.Status)
+									newStatus := string(newApp.Status.Health.Status)
 									if (oldRevision != newRevision) || (oldStatus != newStatus) {
 										SendAppUpdate(newApp, client, oldApp)
 										log.Println("send update app:" + oldApp.Name + ", oldRevision: " + oldRevision + ", newRevision:" + newRevision + ", oldStatus: " + oldStatus + ", newStatus: " + newStatus)
