@@ -565,7 +565,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 					log.Println("app added")
 					if app, ok := obj.(*v1alpha12.Application); ok {
 						log.Println("new app detected: " + app.Name + " " + app.Status.Health.Status)
-						SendAppUpdate(app, client, nil)
+						//SendAppUpdate(app, client, nil)
 					}
 				},
 				UpdateFunc: func(old interface{}, new interface{}) {
@@ -584,7 +584,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 									newReconciledAt := newApp.Status.ReconciledAt
 									oldStatus := oldApp.Status.Sync.Status
 									newStatus := newApp.Status.Sync.Status
-									if (oldRevision != newRevision) || (oldReconciledAt != newReconciledAt) || (oldStatus != newStatus) {
+									if (oldRevision != newRevision) || ((oldReconciledAt != newReconciledAt) && (oldStatus != newStatus)) {
 										SendAppUpdate(newApp, client, oldApp)
 									} else {
 										log.Println("skip updating old app as old and new revision mismatch:" + oldApp.Name + ", newRevision:" + newRevision)
