@@ -582,11 +582,17 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 									newRevision := newApp.Status.Sync.Revision
 									oldStatus := string(oldApp.Status.Health.Status)
 									newStatus := string(newApp.Status.Health.Status)
-									if (oldRevision != newRevision) || (oldStatus != newStatus) {
+									newSyncStatus := string(newApp.Status.Sync.Status)
+									oldSyncStatus := string(oldApp.Status.Sync.Status)
+									if (oldRevision != newRevision) || (oldStatus != newStatus) || (newSyncStatus != oldSyncStatus) {
 										SendAppUpdate(newApp, client, oldApp)
-										log.Println("send update app:" + oldApp.Name + ", oldRevision: " + oldRevision + ", newRevision:" + newRevision + ", oldStatus: " + oldStatus + ", newStatus: " + newStatus)
+										log.Println("send update app:" + oldApp.Name + ", oldRevision: " + oldRevision + ", newRevision:" +
+											newRevision + ", oldStatus: " + oldStatus + ", newStatus: " + newStatus +
+											", newSyncStatus: " + newSyncStatus + ", oldSyncStatus: " + oldSyncStatus)
 									} else {
-										log.Println("skip updating app:" + oldApp.Name + ", oldRevision: " + oldRevision + ", newRevision:" + newRevision + ", oldStatus: " + oldStatus + ", newStatus: " + newStatus)
+										log.Println("skip updating app:" + oldApp.Name + ", oldRevision: " + oldRevision + ", newRevision:" +
+											newRevision + ", oldStatus: " + oldStatus + ", newStatus: " + newStatus +
+											", newSyncStatus: " + newSyncStatus + ", oldSyncStatus: " + oldSyncStatus)
 									}
 								}
 							}
