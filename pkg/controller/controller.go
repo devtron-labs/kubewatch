@@ -584,7 +584,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 									newReconciledAt := newApp.Status.ReconciledAt
 									oldStatus := oldApp.Status.Sync.Status
 									newStatus := newApp.Status.Sync.Status
-									if (oldRevision != newRevision) || (oldReconciledAt != newReconciledAt) || (oldStatus != newStatus) {
+									if (oldRevision != newRevision) || ((oldReconciledAt != newReconciledAt) && (oldStatus != newStatus)) {
 										SendAppUpdate(newApp, client, oldApp)
 									} else {
 										log.Println("skip updating old app as old and new revision mismatch:" + oldApp.Name + ", newRevision:" + newRevision)
