@@ -591,10 +591,6 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 									}
 								}
 							}
-							if oldApp.Status.Health.Status == newApp.Status.Health.Status {
-								return
-							}
-							SendAppUpdate(newApp, client, oldApp)
 						} else {
 							log.Println("app update detected, but skip updating, there is no new app")
 						}
