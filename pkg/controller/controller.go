@@ -580,8 +580,6 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 									log.Println("old deployment detected for update: name:" + oldApp.Name + ", status:" + oldApp.Status.Health.Status)
 									oldRevision := oldApp.Status.Sync.Revision
 									newRevision := newApp.Status.Sync.Revision
-									oldReconciledAt := oldApp.Status.ReconciledAt
-									newReconciledAt := newApp.Status.ReconciledAt
 									oldStatus := oldApp.Status.Sync.Status
 									newStatus := newApp.Status.Sync.Status
 									if (oldRevision != newRevision) || (oldStatus != newStatus) {
