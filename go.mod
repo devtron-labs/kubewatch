@@ -6,7 +6,7 @@ require (
 	github.com/argoproj/argo v2.3.0+incompatible
 	github.com/argoproj/argo-cd v1.0.2
 	github.com/caarlos0/env v3.5.0+incompatible
-	github.com/devtron-labs/common-lib v0.0.0-20220824100731-68db4cddbb59
+	github.com/devtron-labs/common-lib v0.0.0-20220824132803-b498d321f912
 	github.com/go-resty/resty/v2 v2.7.0
 	github.com/hashicorp/go-uuid v1.0.1
 	github.com/nlopes/slack v0.1.0
