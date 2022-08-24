@@ -580,14 +580,19 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 									log.Println("old deployment detected for update: name:" + oldApp.Name + ", status:" + oldApp.Status.Health.Status)
 									oldRevision := oldApp.Status.Sync.Revision
 									newRevision := newApp.Status.Sync.Revision
-									oldReconciledAt := oldApp.Status.ReconciledAt
-									newReconciledAt := newApp.Status.ReconciledAt
-									oldStatus := oldApp.Status.Sync.Status
-									newStatus := newApp.Status.Sync.Status
-									if (oldRevision != newRevision) || ((oldReconciledAt != newReconciledAt) && (oldStatus != newStatus)) {
+									oldStatus := string(oldApp.Status.Health.Status)
+									newStatus := string(newApp.Status.Health.Status)
+									newSyncStatus := string(newApp.Status.Sync.Status)
+									oldSyncStatus := string(oldApp.Status.Sync.Status)
+									if (oldRevision != newRevision) || (oldStatus != newStatus) || (newSyncStatus != oldSyncStatus) {
 										SendAppUpdate(newApp, client, oldApp)
+										log.Println("send update app:" + oldApp.Name + ", oldRevision: " + oldRevision + ", newRevision:" +
+											newRevision + ", oldStatus: " + oldStatus + ", newStatus: " + newStatus +
+											", newSyncStatus: " + newSyncStatus + ", oldSyncStatus: " + oldSyncStatus)
 									} else {
-										log.Println("skip updating old app as old and new revision mismatch:" + oldApp.Name + ", newRevision:" + newRevision)
+										log.Println("skip updating app:" + oldApp.Name + ", oldRevision: " + oldRevision + ", newRevision:" +
+											newRevision + ", oldStatus: " + oldStatus + ", newStatus: " + newStatus +
+											", newSyncStatus: " + newSyncStatus + ", oldSyncStatus: " + oldSyncStatus)
 									}
 								}
 							}
