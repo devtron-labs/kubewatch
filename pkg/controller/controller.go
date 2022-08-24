@@ -35,9 +35,7 @@ import (
 	"github.com/argoproj/argo/workflow/util"
 	"github.com/caarlos0/env"
 	"github.com/go-resty/resty/v2"
-	"github.com/hashicorp/go-uuid"
 	"github.com/nats-io/nats.go"
-	"github.com/robfig/cron/v3"
 	v13 "k8s.io/api/batch/v1"
 	"k8s.io/api/extensions/v1beta1"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -609,13 +607,6 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 			appStopCh := make(chan struct{})
 			defer close(appStopCh)
 			go acdInformer.Run(appStopCh)
-
-			c := cron.New()
-			_, err := c.AddFunc("@every 1m", FireDailyMinuteEvent)
-			if err != nil {
-				log.Panic("cannot start daily cron, err ", err)
-			}
-			go c.Start()
 		}
 
 	}
@@ -690,38 +681,6 @@ func PublishEventsOnRest(jsonBody []byte, topic string, externalCdConfig *Extern
 	}
 	log.Println("res ", string(resp.Body()))
 	return nil
-}
-
-func FireDailyMinuteEvent() {
-	correlationId, _ := uuid.GenerateUUID()
-	event := CronEvent{
-		EventName:     cronMinuteWiseEventName,
-		EventTypeId:   int(Trigger),
-		CorrelationId: fmt.Sprintf("%s", correlationId),
-		EventTime:     time.Now().Format("2006-01-02 15:04:05"),
-		Payload:       map[string]string{},
-	}
-	eventJson, err := json.Marshal(event)
-	if err != nil {
-		log.Println("err", err)
-		return
-	}
-	log.Println("cron event", string(eventJson))
-	var reqBody = []byte(eventJson)
-
-	err = AddStream(client.JetStrCtxt, KUBEWATCH_STREAM)
-	if err != nil {
-		log.Fatal("Error while adding stream", "error", err)
-	}
-
-	//Generate random string for passing as Header Id in message
-	randString := "MsgHeaderId-" + utils.Generate(10)
-	_, err = client.JetStrCtxt.Publish(CRON_EVENTS, reqBody, nats.MsgId(randString))
-	if err != nil {
-		log.Println("Error while publishing Request", err)
-		return
-	}
-	log.Println("cron event sent")
 }
 
 type ApplicationDetail struct {
