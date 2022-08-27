@@ -36,8 +36,6 @@ import (
 	"github.com/argoproj/argo/workflow/util"
 	"github.com/caarlos0/env"
 	"github.com/go-resty/resty/v2"
-	"github.com/hashicorp/go-uuid"
-	"github.com/robfig/cron/v3"
 	v13 "k8s.io/api/batch/v1"
 	"k8s.io/api/extensions/v1beta1"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -98,7 +96,7 @@ type Controller struct {
 }
 
 type PubSubConfig struct {
-	NatsServerHost string `env:"NATS_SERVER_HOST" envDefault:"nats://localhost:4222"`
+	NatsServerHost string `env:"NATS_SERVER_HOST" envDefault:"nats://devtron-nats.devtroncd:4222"`
 }
 
 type CiConfig struct {
@@ -547,7 +545,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 					log.Println("app added")
 					if app, ok := obj.(*v1alpha12.Application); ok {
 						log.Println("new app detected: " + app.Name + " " + app.Status.Health.Status)
-						SendAppUpdate(app, pubSubClient, nil)
+						//SendAppUpdate(app, pubSubClient, nil)
 					}
 				},
 				UpdateFunc: func(old interface{}, new interface{}) {
@@ -562,21 +560,22 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 									log.Println("old deployment detected for update: name:" + oldApp.Name + ", status:" + oldApp.Status.Health.Status)
 									oldRevision := oldApp.Status.Sync.Revision
 									newRevision := newApp.Status.Sync.Revision
-									oldReconciledAt := oldApp.Status.ReconciledAt
-									newReconciledAt := newApp.Status.ReconciledAt
-									oldStatus := oldApp.Status.Sync.Status
-									newStatus := newApp.Status.Sync.Status
-									if (oldRevision != newRevision) || (oldReconciledAt != newReconciledAt) || (oldStatus != newStatus) {
+									oldStatus := string(oldApp.Status.Health.Status)
+									newStatus := string(newApp.Status.Health.Status)
+									newSyncStatus := string(newApp.Status.Sync.Status)
+									oldSyncStatus := string(oldApp.Status.Sync.Status)
+									if (oldRevision != newRevision) || (oldStatus != newStatus) || (newSyncStatus != oldSyncStatus) {
 										SendAppUpdate(newApp, pubSubClient, oldApp)
+										log.Println("send update app:" + oldApp.Name + ", oldRevision: " + oldRevision + ", newRevision:" +
+											newRevision + ", oldStatus: " + oldStatus + ", newStatus: " + newStatus +
+											", newSyncStatus: " + newSyncStatus + ", oldSyncStatus: " + oldSyncStatus)
 									} else {
-										log.Println("skip updating old app as old and new revision mismatch:" + oldApp.Name + ", newRevision:" + newRevision)
+										log.Println("skip updating app:" + oldApp.Name + ", oldRevision: " + oldRevision + ", newRevision:" +
+											newRevision + ", oldStatus: " + oldStatus + ", newStatus: " + newStatus +
+											", newSyncStatus: " + newSyncStatus + ", oldSyncStatus: " + oldSyncStatus)
 									}
 								}
 							}
-							if oldApp.Status.Health.Status == newApp.Status.Health.Status {
-								return
-							}
-							SendAppUpdate(newApp, pubSubClient, oldApp)
 						} else {
 							log.Println("app update detected, but skip updating, there is no new app")
 						}
@@ -590,13 +589,6 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 			appStopCh := make(chan struct{})
 			defer close(appStopCh)
 			go acdInformer.Run(appStopCh)
-
-			c := cron.New()
-			_, err := c.AddFunc("@every 1m", FireDailyMinuteEvent)
-			if err != nil {
-				log.Panic("cannot start daily cron, err ", err)
-			}
-			go c.Start()
 		}
 
 	}
@@ -671,31 +663,6 @@ func PublishEventsOnRest(jsonBody []byte, topic string, externalCdConfig *Extern
 	}
 	log.Println("res ", string(resp.Body()))
 	return nil
-}
-
-func FireDailyMinuteEvent() {
-	correlationId, _ := uuid.GenerateUUID()
-	event := CronEvent{
-		EventName:     cronMinuteWiseEventName,
-		EventTypeId:   int(Trigger),
-		CorrelationId: fmt.Sprintf("%s", correlationId),
-		EventTime:     time.Now().Format("2006-01-02 15:04:05"),
-		Payload:       map[string]string{},
-	}
-	eventJson, err := json.Marshal(event)
-	if err != nil {
-		log.Println("err", err)
-		return
-	}
-	log.Println("cron event", string(eventJson))
-	var reqBody = []byte(eventJson)
-
-	err = pubSubClient.Publish(pubSubLib.CRON_EVENTS, string(reqBody))
-	if err != nil {
-		log.Println("Error while publishing Request", err)
-		return
-	}
-	log.Println("cron event sent")
 }
 
 type ApplicationDetail struct {
