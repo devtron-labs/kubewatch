@@ -568,12 +568,13 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 				},
 				UpdateFunc: func(old interface{}, new interface{}) {
 					log.Println("app update detected")
+					statusTime := time.Now()
 					if oldApp, ok := old.(*v1alpha12.Application); ok {
 						if newApp, ok := new.(*v1alpha12.Application); ok {
 							if newApp.Status.History != nil && len(newApp.Status.History) > 0 {
 								if oldApp.Status.History == nil || len(oldApp.Status.History) == 0 {
 									log.Println("new deployment detected")
-									SendAppUpdate(newApp, client, nil)
+									SendAppUpdate(newApp, client, nil, statusTime)
 								} else {
 									log.Println("old deployment detected for update: name:" + oldApp.Name + ", status:" + oldApp.Status.Health.Status)
 									oldRevision := oldApp.Status.Sync.Revision
@@ -583,7 +584,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 									newSyncStatus := string(newApp.Status.Sync.Status)
 									oldSyncStatus := string(oldApp.Status.Sync.Status)
 									if (oldRevision != newRevision) || (oldStatus != newStatus) || (newSyncStatus != oldSyncStatus) {
-										SendAppUpdate(newApp, client, oldApp)
+										SendAppUpdate(newApp, client, oldApp, statusTime)
 										log.Println("send update app:" + oldApp.Name + ", oldRevision: " + oldRevision + ", newRevision:" +
 											newRevision + ", oldStatus: " + oldStatus + ", newStatus: " + newStatus +
 											", newSyncStatus: " + newSyncStatus + ", oldSyncStatus: " + oldSyncStatus)
@@ -686,9 +687,10 @@ func PublishEventsOnRest(jsonBody []byte, topic string, externalCdConfig *Extern
 type ApplicationDetail struct {
 	Application    *v1alpha12.Application `json:"application"`
 	OldApplication *v1alpha12.Application `json:"oldApplication"`
+	StatusTime     time.Time              `json:"statusTime"`
 }
 
-func SendAppUpdate(app *v1alpha12.Application, client *PubSubClient, oldApp *v1alpha12.Application) {
+func SendAppUpdate(app *v1alpha12.Application, client *PubSubClient, oldApp *v1alpha12.Application, statusTime time.Time) {
 	if client == nil {
 		log.Println("client is nil, don't send update")
 		return
@@ -715,6 +717,7 @@ func SendAppUpdate(app *v1alpha12.Application, client *PubSubClient, oldApp *v1a
 	appDetail := ApplicationDetail{
 		Application:    newAppCopy,
 		OldApplication: oldAppCopy,
+		StatusTime:     statusTime,
 	}
 	appJson, err := json.Marshal(appDetail)
 	if err != nil {
