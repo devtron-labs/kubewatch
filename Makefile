@@ -16,7 +16,7 @@ LDFLAGS       := "-X '$(PKG)/cmd.gitCommit=$(TRAVIS_COMMIT)' \
 default: build test
 
 build:
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 "$(GOCMD)" build ${GOFLAGS} -ldflags ${LDFLAGS} -o "${BINARY}"
+	CGO_ENABLED=0 GOOS=linux "$(GOCMD)" build ${GOFLAGS} -ldflags ${LDFLAGS} -o "${BINARY}"
 
 docker-image:
 	@docker build -t "${BINARY}" .
