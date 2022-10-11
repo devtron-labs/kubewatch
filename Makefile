@@ -13,16 +13,13 @@ GOFLAGS       ?= $(GOFLAGS:)
 LDFLAGS       := "-X '$(PKG)/cmd.gitCommit=$(TRAVIS_COMMIT)' \
 		          -X '$(PKG)/cmd.buildDate=$(BUILD_DATE)'"
 
-default: build test
+default: build
 
 build:
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 "$(GOCMD)" build ${GOFLAGS} -ldflags ${LDFLAGS} -o "${BINARY}"
+	CGO_ENABLED=0 GOOS=linux "$(GOCMD)" build ${GOFLAGS} -ldflags ${LDFLAGS} -o "${BINARY}"
 
 docker-image:
 	@docker build -t "${BINARY}" .
-
-test:
-	"$(GOCMD)" test -race -v $(shell go list ./... | grep -v '/vendor/')
 
 stop:
 	@docker stop "${BINARY}"
