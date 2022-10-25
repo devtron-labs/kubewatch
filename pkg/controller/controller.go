@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	utils2 "github.com/devtron-labs/common-lib/utils"
 	"log"
 	"os"
 	"os/signal"
@@ -35,7 +36,6 @@ import (
 	"github.com/argoproj/argo/workflow/util"
 	"github.com/caarlos0/env"
 	"github.com/go-resty/resty/v2"
-	"github.com/nats-io/nats.go"
 	v13 "k8s.io/api/batch/v1"
 	"k8s.io/api/extensions/v1beta1"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -44,6 +44,7 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/tools/clientcmd"
 
+	pubsub "github.com/devtron-labs/common-lib/pubsub-lib"
 	"github.com/devtron-labs/kubewatch/config"
 	"github.com/devtron-labs/kubewatch/pkg/event"
 	"github.com/devtron-labs/kubewatch/pkg/handlers"
@@ -94,14 +95,14 @@ type Controller struct {
 	eventHandler handlers.Handler
 }
 
-type PubSubClient struct {
-	Conn       *nats.Conn
-	JetStrCtxt nats.JetStreamContext
-}
-
-type PubSubConfig struct {
-	NatsServerHost string `env:"NATS_SERVER_HOST" envDefault:"nats://devtron-nats.devtroncd:4222"`
-}
+//type PubSubClient struct {
+//	Conn       *nats.Conn
+//	JetStrCtxt nats.JetStreamContext
+//}
+//
+//type PubSubConfig struct {
+//	NatsServerHost string `env:"NATS_SERVER_HOST" envDefault:"nats://devtron-nats.devtroncd:4222"`
+//}
 
 type CiConfig struct {
 	DefaultNamespace string `env:"DEFAULT_NAMESPACE" envDefault:"devtron-ci"`
@@ -133,7 +134,7 @@ const Fail EventType = 3
 
 const cronMinuteWiseEventName string = "minute-event"
 
-var client *PubSubClient
+var client *pubsub.PubSubClientServiceImpl
 
 func Start(conf *config.Config, eventHandler handlers.Handler) {
 	var kubeClient kubernetes.Interface
@@ -468,16 +469,19 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 						log.Println("sending workflow update event ", string(wfJson))
 						var reqBody = []byte(wfJson)
 						if client == nil {
-							log.Println("dont't publish")
+							log.Println("don't publish")
 							return
 						}
-						err = AddStream(client.JetStrCtxt, KUBEWATCH_STREAM)
-						if err != nil {
-							log.Fatal("Error while adding stream", "err", err)
-						}
-						//Generate random string for passing as Header Id in message
-						randString := "MsgHeaderId-" + utils.Generate(10)
-						_, err = client.JetStrCtxt.Publish(WORKFLOW_STATUS_UPDATE_TOPIC, reqBody, nats.MsgId(randString))
+						/*
+							err = AddStream(client.NatsClient.JetStrCtxt, KUBEWATCH_STREAM)
+							if err != nil {
+								log.Fatal("Error while adding stream", "err", err)
+							}
+							//Generate random string for passing as Header Id in message
+							randString := "MsgHeaderId-" + utils.Generate(10)
+							_, err = client.NatsClient.JetStrCtxt.Publish(WORKFLOW_STATUS_UPDATE_TOPIC, reqBody, nats.MsgId(randString))
+						*/
+						err = client.Publish(WORKFLOW_STATUS_UPDATE_TOPIC, string(reqBody))
 						if err != nil {
 							log.Println("Error while publishing Request", err)
 							return
@@ -524,13 +528,16 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 							log.Println("dont't publish")
 							return
 						}
-						err = AddStream(client.JetStrCtxt, KUBEWATCH_STREAM)
-						if err != nil {
-							log.Fatal("Error while adding stream", "error", err)
-						}
-						//Generate random string for passing as Header Id in message
-						randString := "MsgHeaderId-" + utils.Generate(10)
-						_, err = client.JetStrCtxt.Publish(CD_WORKFLOW_STATUS_UPDATE, reqBody, nats.MsgId(randString))
+						/*
+							err = AddStream(client.JetStrCtxt, KUBEWATCH_STREAM)
+							if err != nil {
+								log.Fatal("Error while adding stream", "error", err)
+							}
+							//Generate random string for passing as Header Id in message
+							randString := "MsgHeaderId-" + utils.Generate(10)
+							_, err = client.JetStrCtxt.Publish(CD_WORKFLOW_STATUS_UPDATE, reqBody, nats.MsgId(randString))
+						*/
+						err = client.Publish(CD_WORKFLOW_STATUS_UPDATE, string(reqBody))
 						if err != nil {
 							log.Println("Error while publishing Request", err)
 							return
@@ -690,7 +697,7 @@ type ApplicationDetail struct {
 	StatusTime     time.Time              `json:"statusTime"`
 }
 
-func SendAppUpdate(app *v1alpha12.Application, client *PubSubClient, oldApp *v1alpha12.Application, statusTime time.Time) {
+func SendAppUpdate(app *v1alpha12.Application, client *pubsub.PubSubClientServiceImpl, oldApp *v1alpha12.Application, statusTime time.Time) {
 	if client == nil {
 		log.Println("client is nil, don't send update")
 		return
@@ -726,15 +733,17 @@ func SendAppUpdate(app *v1alpha12.Application, client *PubSubClient, oldApp *v1a
 	}
 	log.Println("app update event for publish: ", string(appJson))
 	var reqBody = []byte(appJson)
+	/*
+		err = AddStream(client.JetStrCtxt, KUBEWATCH_STREAM)
+		if err != nil {
+			log.Fatal("Error while adding stream", "error", err)
+		}
 
-	err = AddStream(client.JetStrCtxt, KUBEWATCH_STREAM)
-	if err != nil {
-		log.Fatal("Error while adding stream", "error", err)
-	}
-
-	//Generate random string for passing as Header Id in message
-	randString := "MsgHeaderId-" + utils.Generate(10)
-	_, err = client.JetStrCtxt.Publish(APPLICATION_STATUS_UPDATE_TOPIC, reqBody, nats.MsgId(randString))
+		//Generate random string for passing as Header Id in message
+		randString := "MsgHeaderId-" + utils.Generate(10)
+		_, err = client.JetStrCtxt.Publish(APPLICATION_STATUS_UPDATE_TOPIC, reqBody, nats.MsgId(randString))
+	*/
+	err = client.Publish(APPLICATION_STATUS_UPDATE_TOPIC, string(reqBody))
 	if err != nil {
 		log.Println("Error while publishing Request", err)
 		return
@@ -742,39 +751,45 @@ func SendAppUpdate(app *v1alpha12.Application, client *PubSubClient, oldApp *v1a
 	log.Println("app update sent for app: " + app.Name)
 }
 
-func NewPubSubClient() (*PubSubClient, error) {
-	cfg := &PubSubConfig{}
-	err := env.Parse(cfg)
+func NewPubSubClient() (*pubsub.PubSubClientServiceImpl, error) {
+	//cfg := &PubSubConfig{}
+	//err := env.Parse(cfg)
+	//if err != nil {
+	//	return &pubsub.NatsClient{}, err
+	//}
+	//nc, err := nats.Connect(cfg.NatsServerHost,
+	//	nats.ReconnectWait(10*time.Second), nats.MaxReconnects(100),
+	//	nats.DisconnectErrHandler(func(nc *nats.Conn, err error) {
+	//		log.Println("Nats Connection got disconnected!", "Reason", err)
+	//	}),
+	//	nats.ReconnectHandler(func(nc *nats.Conn) {
+	//		log.Println("Nats Connection got reconnected", "url", nc.ConnectedUrl())
+	//	}),
+	//	nats.ClosedHandler(func(nc *nats.Conn) {
+	//		log.Println("Nats Client Connection closed!", "Reason", nc.LastError())
+	//	}))
+	//if err != nil {
+	//	log.Println("err", err)
+	//	return &pubsub.NatsClient{}, err
+	//}
+	////create a jetstream context
+	//js, err := nc.JetStream()
+	//
+	//if err != nil {
+	//	log.Println("err while creating jetstream context", err)
+	//}
+	//
+	////natsClient := &PubSubClient{
+	////	Conn:       nc,
+	////	JetStrCtxt: js,
+	////}
+	//var natsClient *PubSubClient
+	logger, err := utils2.NewSugardLogger()
 	if err != nil {
-		return &PubSubClient{}, err
+		log.Println("error occured while creating suggered logger in KubeWatch controller err : ", err)
 	}
-	nc, err := nats.Connect(cfg.NatsServerHost,
-		nats.ReconnectWait(10*time.Second), nats.MaxReconnects(100),
-		nats.DisconnectErrHandler(func(nc *nats.Conn, err error) {
-			log.Println("Nats Connection got disconnected!", "Reason", err)
-		}),
-		nats.ReconnectHandler(func(nc *nats.Conn) {
-			log.Println("Nats Connection got reconnected", "url", nc.ConnectedUrl())
-		}),
-		nats.ClosedHandler(func(nc *nats.Conn) {
-			log.Println("Nats Client Connection closed!", "Reason", nc.LastError())
-		}))
-	if err != nil {
-		log.Println("err", err)
-		return &PubSubClient{}, err
-	}
-	//create a jetstream context
-	js, err := nc.JetStream()
-
-	if err != nil {
-		log.Println("err while creating jetstream context", err)
-	}
-
-	natsClient := &PubSubClient{
-		Conn:       nc,
-		JetStrCtxt: js,
-	}
-	return natsClient, nil
+	natsClient := pubsub.NewPubSubClientServiceImpl(logger)
+	return natsClient, err
 }
 
 func newResourceController(client kubernetes.Interface, eventHandler handlers.Handler, informer cache.SharedIndexInformer, resourceType string) *Controller {
