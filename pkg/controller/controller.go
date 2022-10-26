@@ -481,7 +481,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 							randString := "MsgHeaderId-" + utils.Generate(10)
 							_, err = client.NatsClient.JetStrCtxt.Publish(WORKFLOW_STATUS_UPDATE_TOPIC, reqBody, nats.MsgId(randString))
 						*/
-						err = client.Publish(WORKFLOW_STATUS_UPDATE_TOPIC, string(reqBody))
+						err = client.Publish(pubsub.WORKFLOW_STATUS_UPDATE_TOPIC, string(reqBody))
 						if err != nil {
 							log.Println("Error while publishing Request", err)
 							return
@@ -537,7 +537,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 							randString := "MsgHeaderId-" + utils.Generate(10)
 							_, err = client.JetStrCtxt.Publish(CD_WORKFLOW_STATUS_UPDATE, reqBody, nats.MsgId(randString))
 						*/
-						err = client.Publish(CD_WORKFLOW_STATUS_UPDATE, string(reqBody))
+						err = client.Publish(pubsub.CD_WORKFLOW_STATUS_UPDATE, string(reqBody))
 						if err != nil {
 							log.Println("Error while publishing Request", err)
 							return
@@ -641,7 +641,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 					log.Println("sending external cd workflow update event ", string(wfJson))
 					var reqBody = []byte(wfJson)
 
-					err = PublishEventsOnRest(reqBody, CD_WORKFLOW_STATUS_UPDATE, externalCD)
+					err = PublishEventsOnRest(reqBody, pubsub.CD_WORKFLOW_STATUS_UPDATE, externalCD)
 					if err != nil {
 						log.Println("publish cd err", "err", err)
 						return
@@ -743,7 +743,7 @@ func SendAppUpdate(app *v1alpha12.Application, client *pubsub.PubSubClientServic
 		randString := "MsgHeaderId-" + utils.Generate(10)
 		_, err = client.JetStrCtxt.Publish(APPLICATION_STATUS_UPDATE_TOPIC, reqBody, nats.MsgId(randString))
 	*/
-	err = client.Publish(APPLICATION_STATUS_UPDATE_TOPIC, string(reqBody))
+	err = client.Publish(pubsub.APPLICATION_STATUS_UPDATE_TOPIC, string(reqBody))
 	if err != nil {
 		log.Println("Error while publishing Request", err)
 		return
