@@ -103,17 +103,19 @@ func AddStream(js nats.JetStreamContext, streamNames ...string) error {
 		} else if err != nil {
 			log.Fatal("Error while getting stream info", "stream name", streamName, "error", err)
 		}
-		config := streamInfo.Config
-		if config.MaxAge != msgMaxAge {
-			_, err := js.UpdateStream(&nats.StreamConfig{
-				Name:     streamName,
-				Subjects: GetStreamSubjects(streamName),
-				MaxAge:   msgMaxAge,
-			})
-			if err != nil {
-				log.Println("error occurred while updating stream for maxAge config", "streamName", streamName, "error", err)
-			} else {
-				log.Println("stream updated successfully with maxAge config", "old", config.MaxAge, "new", msgMaxAge)
+		if streamInfo != nil {
+			config := streamInfo.Config
+			if config.MaxAge != msgMaxAge {
+				_, err := js.UpdateStream(&nats.StreamConfig{
+					Name:     streamName,
+					Subjects: GetStreamSubjects(streamName),
+					MaxAge:   msgMaxAge,
+				})
+				if err != nil {
+					log.Println("error occurred while updating stream for maxAge config", "streamName", streamName, "error", err)
+				} else {
+					log.Println("stream updated successfully with maxAge config", "old", config.MaxAge, "new", msgMaxAge)
+				}
 			}
 		}
 	}
