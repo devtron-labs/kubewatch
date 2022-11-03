@@ -700,18 +700,18 @@ func SendAppUpdate(app *v1alpha12.Application, client *PubSubClient, oldApp *v1a
 	if app != nil {
 		newAppCopy = app.DeepCopy()
 		//nil check not required for `newAppCopy.Status` as its object
-		newAppCopy.Status.Resources = nil
-		if newAppCopy.Status.OperationState != nil {
-			newAppCopy.Status.OperationState.SyncResult = nil
-		}
+		//newAppCopy.Status.Resources = nil
+		//if newAppCopy.Status.OperationState != nil {
+		//	newAppCopy.Status.OperationState.SyncResult = nil
+		//}
 	}
 	if oldApp != nil {
 		oldAppCopy = oldApp.DeepCopy()
 		//nil check not required for `newAppCopy.Status` as its object
-		oldAppCopy.Status.Resources = nil
-		if oldAppCopy.Status.OperationState != nil {
-			oldAppCopy.Status.OperationState.SyncResult = nil
-		}
+		//oldAppCopy.Status.Resources = nil
+		//if oldAppCopy.Status.OperationState != nil {
+		//	oldAppCopy.Status.OperationState.SyncResult = nil
+		//}
 	}
 
 	appDetail := ApplicationDetail{
