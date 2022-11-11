@@ -24,7 +24,7 @@ require (
 	github.com/argoproj/pkg v0.0.0-20181025000221-88ab0e836a8e // indirect
 	github.com/colinmarc/hdfs v1.1.4-0.20180802165501-48eb8d6c34a9 // indirect
 	github.com/coreos/go-oidc v2.1.0+incompatible // indirect
-	github.com/devtron-labs/common-lib v0.0.0-20221111092855-6dae5a34a041
+	github.com/devtron-labs/common-lib v0.0.0-20221111102018-8cffc22d80e3
 	github.com/docker/spdystream v0.0.0-20181023171402-6480d4af844c // indirect
 	github.com/elazarl/goproxy v0.0.0-20220115173737-adb46da277ac // indirect
 	github.com/emicklei/go-restful v2.9.6+incompatible // indirect
