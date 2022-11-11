@@ -62,7 +62,7 @@ github.com/colinmarc/hdfs/rpc
 github.com/coreos/go-oidc
 # github.com/davecgh/go-spew v1.1.1
 github.com/davecgh/go-spew/spew
-# github.com/devtron-labs/common-lib v0.0.0-20220923162839-ff9dae9a9b07
+# github.com/devtron-labs/common-lib v0.0.0-20221111092855-6dae5a34a041
 ## explicit
 github.com/devtron-labs/common-lib/pubsub-lib
 github.com/devtron-labs/common-lib/utils
@@ -220,7 +220,7 @@ github.com/modern-go/concurrent
 # github.com/modern-go/reflect2 v0.0.0-20180701023420-4b7aa43c6742
 ## explicit
 github.com/modern-go/reflect2
-# github.com/nats-io/nats.go v1.15.0
+# github.com/nats-io/nats.go v1.19.0
 ## explicit
 github.com/nats-io/nats.go
 github.com/nats-io/nats.go/encoders/builtin

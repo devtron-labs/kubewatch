@@ -8,7 +8,7 @@ require (
 	github.com/caarlos0/env v3.5.0+incompatible
 	github.com/go-resty/resty/v2 v2.7.0
 	github.com/hashicorp/go-uuid v1.0.1 // indirect
-	github.com/nats-io/nats.go v1.15.0
+	github.com/nats-io/nats.go v1.19.0
 	github.com/nlopes/slack v0.1.0
 	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/cobra v0.0.4-0.20181021141114-fe5e611709b0
@@ -24,7 +24,7 @@ require (
 	github.com/argoproj/pkg v0.0.0-20181025000221-88ab0e836a8e // indirect
 	github.com/colinmarc/hdfs v1.1.4-0.20180802165501-48eb8d6c34a9 // indirect
 	github.com/coreos/go-oidc v2.1.0+incompatible // indirect
-	github.com/devtron-labs/common-lib v0.0.0-20220923162839-ff9dae9a9b07
+	github.com/devtron-labs/common-lib v0.0.0-20221111092855-6dae5a34a041
 	github.com/docker/spdystream v0.0.0-20181023171402-6480d4af844c // indirect
 	github.com/elazarl/goproxy v0.0.0-20220115173737-adb46da277ac // indirect
 	github.com/emicklei/go-restful v2.9.6+incompatible // indirect
