@@ -574,7 +574,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 							if newApp.Status.History != nil && len(newApp.Status.History) > 0 {
 								if oldApp.Status.History == nil || len(oldApp.Status.History) == 0 {
 									log.Println("new deployment detected")
-									SendAppUpdate(newApp, client, nil, statusTime)
+									SendAppUpdate(newApp, client, statusTime)
 								} else {
 									log.Println("old deployment detected for update: name:" + oldApp.Name + ", status:" + oldApp.Status.Health.Status)
 									oldRevision := oldApp.Status.Sync.Revision
@@ -584,7 +584,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 									newSyncStatus := string(newApp.Status.Sync.Status)
 									oldSyncStatus := string(oldApp.Status.Sync.Status)
 									if (oldRevision != newRevision) || (oldStatus != newStatus) || (newSyncStatus != oldSyncStatus) {
-										SendAppUpdate(newApp, client, oldApp, statusTime)
+										SendAppUpdate(newApp, client, statusTime)
 										log.Println("send update app:" + oldApp.Name + ", oldRevision: " + oldRevision + ", newRevision:" +
 											newRevision + ", oldStatus: " + oldStatus + ", newStatus: " + newStatus +
 											", newSyncStatus: " + newSyncStatus + ", oldSyncStatus: " + oldSyncStatus)
@@ -685,39 +685,18 @@ func PublishEventsOnRest(jsonBody []byte, topic string, externalCdConfig *Extern
 }
 
 type ApplicationDetail struct {
-	Application    *v1alpha12.Application `json:"application"`
-	OldApplication *v1alpha12.Application `json:"oldApplication"`
-	StatusTime     time.Time              `json:"statusTime"`
+	Application *v1alpha12.Application `json:"application"`
+	StatusTime  time.Time              `json:"statusTime"`
 }
 
-func SendAppUpdate(app *v1alpha12.Application, client *PubSubClient, oldApp *v1alpha12.Application, statusTime time.Time) {
+func SendAppUpdate(app *v1alpha12.Application, client *PubSubClient, statusTime time.Time) {
 	if client == nil {
 		log.Println("client is nil, don't send update")
 		return
 	}
-	var newAppCopy, oldAppCopy *v1alpha12.Application
-
-	if app != nil {
-		newAppCopy = app.DeepCopy()
-		//nil check not required for `newAppCopy.Status` as its object
-		//newAppCopy.Status.Resources = nil
-		//if newAppCopy.Status.OperationState != nil {
-		//	newAppCopy.Status.OperationState.SyncResult = nil
-		//}
-	}
-	if oldApp != nil {
-		oldAppCopy = oldApp.DeepCopy()
-		//nil check not required for `newAppCopy.Status` as its object
-		//oldAppCopy.Status.Resources = nil
-		//if oldAppCopy.Status.OperationState != nil {
-		//	oldAppCopy.Status.OperationState.SyncResult = nil
-		//}
-	}
-
 	appDetail := ApplicationDetail{
-		Application:    newAppCopy,
-		OldApplication: oldAppCopy,
-		StatusTime:     statusTime,
+		Application: app,
+		StatusTime:  statusTime,
 	}
 	appJson, err := json.Marshal(appDetail)
 	if err != nil {
