@@ -267,6 +267,7 @@ func checkConfigChangeReqd(existingConfig *nats.StreamConfig, toUpdateConfig *na
 	newStreamSubjects := GetStreamSubjects(toUpdateConfig.Name)
 	if toUpdateConfig.MaxAge != time.Duration(0) && toUpdateConfig.MaxAge != existingConfig.MaxAge || len(newStreamSubjects) != len(existingConfig.Subjects) {
 		existingConfig.MaxAge = toUpdateConfig.MaxAge
+		existingConfig.Subjects = newStreamSubjects
 		configChanged = true
 	}
 
