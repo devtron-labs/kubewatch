@@ -118,9 +118,14 @@ var natsTopicMapping = map[string]NatsTopic{
 }
 
 var NatsStreamWiseConfigMapping = map[string]NatsStreamConfig{
-	ORCHESTRATOR_STREAM:  {},
-	CI_RUNNER_STREAM:     {},
-	KUBEWATCH_STREAM:     {},
+	ORCHESTRATOR_STREAM: {},
+	CI_RUNNER_STREAM:    {},
+	KUBEWATCH_STREAM: {
+		StreamConfig: StreamConfig{
+			Name:     KUBEWATCH_STREAM,
+			Subjects: GetStreamSubjects(KUBEWATCH_STREAM),
+		},
+	},
 	GIT_SENSOR_STREAM:    {},
 	IMAGE_SCANNER_STREAM: {},
 }

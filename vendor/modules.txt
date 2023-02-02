@@ -62,7 +62,7 @@ github.com/colinmarc/hdfs/rpc
 github.com/coreos/go-oidc
 # github.com/davecgh/go-spew v1.1.1
 github.com/davecgh/go-spew/spew
-# github.com/devtron-labs/common-lib v0.0.0-20230202130856-d4ef0e6ba405
+# github.com/devtron-labs/common-lib v0.0.0-20230202133846-0be4c43dd7f2
 ## explicit
 github.com/devtron-labs/common-lib/pubsub-lib
 github.com/devtron-labs/common-lib/utils
