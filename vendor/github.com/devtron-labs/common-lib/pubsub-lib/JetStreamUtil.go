@@ -133,6 +133,7 @@ var NatsConsumerWiseConfigMapping = map[string]NatsConsumerConfig{
 	WORKFLOW_STATUS_UPDATE_DURABLE:      {},
 	CRON_EVENTS_DURABLE:                 {},
 	APPLICATION_STATUS_UPDATE_DURABLE:   {},
+	APPLICATION_STATUS_DELETE_DURABLE:   {},
 	CD_COMPLETE_DURABLE:                 {},
 	CI_COMPLETE_DURABLE:                 {},
 	WEBHOOK_EVENT_DURABLE:               {},
