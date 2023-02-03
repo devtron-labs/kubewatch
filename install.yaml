@@ -29,8 +29,8 @@ flock:
   enabled: false
   # url: ""
 webhook:
-  enabled: true
-  url: "http://devtroncd-event-handler-service-prod.devtroncd"
+  enabled: false
+  #url: ""
 
 # Resources to watch
 resourcesToWatch:
