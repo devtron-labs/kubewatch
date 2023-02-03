@@ -9,8 +9,17 @@ ADD . /go/src/github.com/devtron-labs/kubewatch/
 RUN GOOS=linux make
 
 FROM alpine:3.9
+
 RUN apk add --update ca-certificates
+
+RUN adduser -D devtron
+
 COPY --from=build-env  /go/src/github.com/devtron-labs/kubewatch .
+
+RUN chown -R devtron:devtron ./kubewatch
+
 RUN chmod +x ./kubewatch
+
+USER devtron
 
 ENTRYPOINT ["./kubewatch"]
