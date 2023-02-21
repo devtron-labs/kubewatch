@@ -356,13 +356,12 @@ $ kubewatch resource remove --rc --po --svc
 
 Clone the repository into your $GOPATH and then build it.
 ```
-$ mkdir -p $GOPATH/src/github.com/bitnami-labs/
-$ cd $GOPATH/src/github.com/bitnami-labs/
-$ git clone https://github.com/bitnami-labs/kubewatch.git
+$ mkdir -p $GOPATH/src/github.com/devtron-labs/
+$ cd $GOPATH/src/github.com/devtron-labs/
+$ git clone https://github.com/devtron-labs/kubewatch.git
 $ cd kubewatch
 $ go build -o kubewatch main.go
 ```
-or 
 
 You can also use the Makefile directly:
 
