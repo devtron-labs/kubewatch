@@ -371,7 +371,7 @@ $ make build
 
 #### Prerequisites
 
-- You need to have [Go](http://golang.org) (v1.5 or later)  installed. Make sure to set `$GOPATH`
+- You need to have [Go](http://golang.org) (v17 or later)  installed. Make sure to set `$GOPATH`
 
 
 ### Using Docker
