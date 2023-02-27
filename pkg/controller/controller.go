@@ -584,7 +584,13 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 						log.Println("app update detected, but skip updating, there is no old app")
 					}
 				},
-				DeleteFunc: func(obj interface{}) {},
+				DeleteFunc: func(obj interface{}) {
+					if app, ok := obj.(*v1alpha12.Application); ok {
+						statusTime := time.Now()
+						log.Println("app delete detected" + app.Name + " " + app.Status.Health.Status)
+						SendAppDelete(app, client, statusTime)
+					}
+				},
 			})
 
 			appStopCh := make(chan struct{})
@@ -689,6 +695,31 @@ func SendAppUpdate(app *v1alpha12.Application, client *pubsub.PubSubClientServic
 	var reqBody = []byte(appJson)
 
 	err = client.Publish(pubsub.APPLICATION_STATUS_UPDATE_TOPIC, string(reqBody))
+	if err != nil {
+		log.Println("Error while publishing Request", err)
+		return
+	}
+	log.Println("app update sent for app: " + app.Name)
+}
+
+func SendAppDelete(app *v1alpha12.Application, client *pubsub.PubSubClientServiceImpl, statusTime time.Time) {
+	if client == nil {
+		log.Println("client is nil, don't send delete update")
+		return
+	}
+	appDetail := ApplicationDetail{
+		Application: app,
+		StatusTime:  statusTime,
+	}
+	appJson, err := json.Marshal(appDetail)
+	if err != nil {
+		log.Println("marshal error on sending app delete update", err)
+		return
+	}
+	log.Println("app delete event for publish: ", string(appJson))
+	var reqBody = []byte(appJson)
+
+	err = client.Publish(pubsub.APPLICATION_STATUS_DELETE_TOPIC, string(reqBody))
 	if err != nil {
 		log.Println("Error while publishing Request", err)
 		return
