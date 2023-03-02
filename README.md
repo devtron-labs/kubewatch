@@ -1,6 +1,6 @@
 # Kubewatch
 
-[![Build Status](https://travis-ci.org/bitnami-labs/kubewatch.svg?branch=master)](https://travis-ci.org/bitnami-labs/kubewatch) [![Join us on Slack](https://s3.eu-central-1.amazonaws.com/ngtuna/join-us-on-slack.png)](https://skippbox.herokuapp.com)
+
 
 **kubewatch** is a Kubernetes watcher that currently publishes notification to available collaboration hubs/notification channels. Run it in your k8s cluster, and you will get event notifications through webhooks.
 
@@ -356,13 +356,12 @@ $ kubewatch resource remove --rc --po --svc
 
 Clone the repository into your $GOPATH and then build it.
 ```
-$ mkdir -p $GOPATH/src/github.com/bitnami-labs/
-$ cd $GOPATH/src/github.com/bitnami-labs/
-$ git clone https://github.com/bitnami-labs/kubewatch.git
+$ mkdir -p $GOPATH/src/github.com/devtron-labs/
+$ cd $GOPATH/src/github.com/devtron-labs/
+$ git clone https://github.com/devtron-labs/kubewatch.git
 $ cd kubewatch
 $ go build -o kubewatch main.go
 ```
-or 
 
 You can also use the Makefile directly:
 
@@ -372,7 +371,7 @@ $ make build
 
 #### Prerequisites
 
-- You need to have [Go](http://golang.org) (v1.5 or later)  installed. Make sure to set `$GOPATH`
+- You need to have [Go](http://golang.org) (v1.7 or later)  installed. Make sure to set `$GOPATH`
 
 
 ### Using Docker
