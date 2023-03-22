@@ -15,7 +15,7 @@ require (
 	github.com/tbruyelle/hipchat-go v0.0.0-20160921153256-749fb9e14beb
 	gopkg.in/yaml.v2 v2.2.8
 	k8s.io/api v0.0.0-20190704094832-ee9c4073cffa
-	k8s.io/apimachinery v0.0.0-20190704094520-6f131bee5e2c
+	k8s.io/apimachinery v0.15.7
 	k8s.io/client-go v0.0.0-20190704095228-386e588352a4
 )
 
@@ -44,7 +44,6 @@ require (
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/magiconair/properties v1.8.1 // indirect
 	github.com/mailru/easyjson v0.0.0-20190626092158-b2ccc519800e // indirect
-	github.com/modern-go/reflect2 v0.0.0-20180701023420-4b7aa43c6742 // indirect
 	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
 	github.com/pelletier/go-toml v1.4.0 // indirect
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
