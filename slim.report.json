@@ -1,0 +1,160 @@
+{
+  "version": "1.1",
+  "engine": "darwin|Transformer|1.40.1|latest|latest",
+  "containerized": false,
+  "host_distro": {
+    "name": "",
+    "version": "",
+    "display_name": "Big Sur (11.5)"
+  },
+  "type": "build",
+  "state": "error",
+  "target_reference": "kubewatch:latest",
+  "system": {
+    "type": "",
+    "release": "",
+    "distro": {
+      "name": "",
+      "version": "",
+      "display_name": ""
+    }
+  },
+  "source_image": {
+    "identity": {
+      "id": ""
+    },
+    "size": 0,
+    "size_human": "",
+    "create_time": "",
+    "docker_version": "",
+    "architecture": "",
+    "container_entry": {
+      "exe_path": ""
+    }
+  },
+  "minified_image_size": 0,
+  "minified_image_size_human": "",
+  "minified_image": "",
+  "minified_image_has_data": false,
+  "minified_by": 0,
+  "artifact_location": "",
+  "container_report_name": "",
+  "seccomp_profile_name": "",
+  "apparmor_profile_name": "",
+  "image_stack": [
+    {
+      "is_top_image": true,
+      "id": "sha256:5a1f98c50bd172a60075884f12373f9bb26529cf8b7b63085a2e4aefb6e85488",
+      "full_name": "kubewatch:latest",
+      "repo_name": "kubewatch",
+      "version_tag": "latest",
+      "raw_tags": [
+        "kubewatch:latest"
+      ],
+      "create_time": "2023-05-12T10:24:45Z",
+      "new_size": 46489395,
+      "new_size_human": "46 MB",
+      "instructions": [
+        {
+          "type": "ADD",
+          "time": "2020-04-24T00:15:12Z",
+          "is_nop": true,
+          "local_image_exists": false,
+          "layer_index": 0,
+          "size": 5299756,
+          "size_human": "5.3 MB",
+          "params": "file:da3ddeca2212f561c1f428b662a1f1f1200e2d18a42bffb28a0322c235f06582 in /",
+          "command_snippet": "ADD file:da3ddeca2212f561c1f428b662a1f1f1200...",
+          "command_all": "ADD file:da3ddeca2212f561c1f428b662a1f1f1200e2d18a42bffb28a0322c235f06582 /",
+          "target": "/",
+          "source_type": "file",
+          "inst_set_time_bucket": "2020-04-24T05:45:00+05:30"
+        },
+        {
+          "type": "CMD",
+          "time": "2020-04-24T00:15:15Z",
+          "is_nop": true,
+          "is_exec_form": true,
+          "local_image_exists": false,
+          "layer_index": 0,
+          "size": 0,
+          "params": "[\"/bin/sh\"]\n",
+          "command_snippet": "CMD [\"/bin/sh\"]\n",
+          "command_all": "CMD [\"/bin/sh\"]\n",
+          "inst_set_time_bucket": "2020-04-24T05:45:00+05:30"
+        },
+        {
+          "type": "WORKDIR",
+          "time": "2023-05-12T10:20:18Z",
+          "is_nop": false,
+          "local_image_exists": false,
+          "layer_index": 0,
+          "size": 0,
+          "params": "/go/src/github.com/devtron-labs/kubewatch",
+          "command_snippet": "WORKDIR /go/src/github.com/devtron-labs/kube...",
+          "command_all": "WORKDIR /go/src/github.com/devtron-labs/kubewatch",
+          "system_commands": [
+            "mkdir -p /go/src/github.com/devtron-labs/kubewatch"
+          ],
+          "comment": "buildkit.dockerfile.v0",
+          "is_buildkit_instruction": true,
+          "inst_set_time_bucket": "2023-05-12T15:45:00+05:30",
+          "inst_set_time_index": 1
+        },
+        {
+          "type": "ADD",
+          "time": "2023-05-12T10:24:45Z",
+          "is_nop": false,
+          "local_image_exists": false,
+          "layer_index": 0,
+          "size": 41189639,
+          "size_human": "41 MB",
+          "params": "./kubewatch /go/src/github.com/devtron-labs/kubewatch/kubewatch",
+          "command_snippet": "ADD ./kubewatch /go/src/github.com/devtron-l...",
+          "command_all": "ADD ./kubewatch /go/src/github.com/devtron-labs/kubewatch/kubewatch",
+          "comment": "buildkit.dockerfile.v0",
+          "is_buildkit_instruction": true,
+          "inst_set_time_bucket": "2023-05-12T15:45:00+05:30",
+          "inst_set_time_index": 1
+        },
+        {
+          "type": "USER",
+          "time": "2023-05-12T10:24:45Z",
+          "is_nop": false,
+          "local_image_exists": false,
+          "layer_index": 0,
+          "size": 0,
+          "params": "devtron",
+          "command_snippet": "USER devtron",
+          "command_all": "USER devtron",
+          "comment": "buildkit.dockerfile.v0",
+          "is_buildkit_instruction": true,
+          "inst_set_time_bucket": "2023-05-12T15:45:00+05:30",
+          "inst_set_time_index": 1
+        },
+        {
+          "type": "ENTRYPOINT",
+          "time": "2023-05-12T10:24:45Z",
+          "is_last_instruction": true,
+          "is_nop": false,
+          "is_exec_form": true,
+          "local_image_exists": true,
+          "layer_index": 0,
+          "size": 0,
+          "params": "[\"./kubewatch\"]\n",
+          "command_snippet": "ENTRYPOINT [\"./kubewatch\"]\n",
+          "command_all": "ENTRYPOINT [\"./kubewatch\"]\n",
+          "comment": "buildkit.dockerfile.v0",
+          "raw_tags": [
+            "kubewatch:latest"
+          ],
+          "is_buildkit_instruction": true,
+          "inst_set_time_bucket": "2023-05-12T15:45:00+05:30",
+          "inst_set_time_index": 1
+        }
+      ]
+    }
+  ],
+  "image_created": false,
+  "image_build_engine": ""
+}
