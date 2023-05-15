@@ -21,12 +21,18 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"github.com/argoproj/argo-cd/v2/pkg/apis/application/v1alpha1"
+	versioned2 "github.com/argoproj/argo-cd/v2/pkg/client/clientset/versioned"
+
+	appinformers "github.com/argoproj/argo-cd/v2/pkg/client/informers/externalversions/application/v1alpha1"
 	utils2 "github.com/devtron-labs/common-lib/utils"
 	repository "github.com/devtron-labs/kubewatch/pkg/cluster"
 	"github.com/devtron-labs/kubewatch/pkg/informer"
 	"github.com/devtron-labs/kubewatch/pkg/logger"
 	"github.com/devtron-labs/kubewatch/pkg/sql"
 	"go.uber.org/zap"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/client-go/dynamic"
 	"log"
 	"os"
 	"os/signal"
@@ -130,14 +136,23 @@ var client *pubsub.PubSubClientServiceImpl
 func Start(conf *config.Config, eventHandler handlers.Handler) {
 	logger := logger.NewSugaredLogger()
 	startJobInformer(logger)
-	var kubeClient kubernetes.Interface
-	//cfg, _ := getDevConfig()
-	//cfg, err := rest.InClusterConfig()
+	//var kubeClient kubernetes.Interface
+	cfg, _ := getDevConfig("kubeconfig")
+	//cfg, err := rest.InClusterConfig() //TODO KB: use this
 	//if err != nil {
 	//	kubeClient = utils.GetClientOutOfCluster()
 	//} else {
-		kubeClient = utils.GetClient()
+	//	kubeClient = utils.GetClient()
 	//}
+	httpClient, err := rest.HTTPClientFor(cfg)
+	if err != nil {
+		return
+	}
+	dynamicClient, err := dynamic.NewForConfigAndClient(cfg, httpClient)
+	if err != nil {
+		logger.Errorw("error in getting dynamic interface for resource", "err", err)
+		return
+	}
 	//if conf.Resource.Pod {
 	//	informer := cache.NewSharedIndexInformer(
 	//		&cache.ListWatch{
@@ -425,112 +440,106 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 	//}
 
 	externalCD := &ExternalCdConfig{}
-	err := env.Parse(externalCD)
+	err = env.Parse(externalCD)
 	if err != nil {
-		log.Panic("err", err)
+		logger.Fatal("err", err)
 	}
 
 	if !externalCD.External {
 		client, err = NewPubSubClient()
 		if err != nil {
-			log.Panic("err", err)
+			logger.Fatal("err", err)
 		}
 
 		ciCfg := &CiConfig{}
 		err = env.Parse(ciCfg)
 		if err != nil {
-			log.Panic("err", err)
+			logger.Fatal("err", err)
 		}
 
 		if ciCfg.CiInformer {
 
-			util2.NewWorkflowInformer(kubeClient, ciCfg.DefaultNamespace, )
-
 			//informer := util.NewWorkflowInformer(cfg, ciCfg.DefaultNamespace, 0, nil)
-			//informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-			//	// When a new wf gets created
-			//	AddFunc: func(obj interface{}) {
-			//		log.Println("workflow created")
-			//	},
-			//	// When a wf gets updated
-			//	UpdateFunc: func(oldWf interface{}, newWf interface{}) {
-			//		log.Println("workflow update detected")
-			//		if workflow, ok := newWf.(*unstructured.Unstructured).Object["status"]; ok {
-			//			wfJson, err := json.Marshal(workflow)
-			//			if err != nil {
-			//				log.Println("err", err)
-			//				return
-			//			}
-			//			log.Println("sending workflow update event ", string(wfJson))
-			//			var reqBody = []byte(wfJson)
-			//			if client == nil {
-			//				log.Println("don't publish")
-			//				return
-			//			}
-			//
-			//			err = client.Publish(pubsub.WORKFLOW_STATUS_UPDATE_TOPIC, string(reqBody))
-			//			if err != nil {
-			//				log.Println("Error while publishing Request", err)
-			//				return
-			//			}
-			//			log.Println("workflow update sent")
-			//		}
-			//	},
-			//	// When a wf gets deleted
-			//	DeleteFunc: func(wf interface{}) {},
-			//})
-			//
-			//stopCh := make(chan struct{})
-			//defer close(stopCh)
-			//go informer.Run(stopCh)
+			workflowInformer := util2.NewWorkflowInformer(dynamicClient, ciCfg.DefaultNamespace, 0, nil, cache.Indexers{})
+			workflowInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+				AddFunc: func(obj interface{}) {
+					logger.Debugw("workflow created")
+				},
+				UpdateFunc: func(oldObj, newWf interface{}) {
+					logger.Info("workflow update detected")
+					if workflow, ok := newWf.(*unstructured.Unstructured).Object["status"]; ok {
+						wfJson, err := json.Marshal(workflow)
+						if err != nil {
+							logger.Errorw("error occurred while marshalling workflow", "err", err)
+							return
+						}
+						logger.Debugw("sending workflow update event ", "wfJson", string(wfJson))
+						var reqBody = []byte(wfJson)
+						if client == nil {
+							logger.Warn("don't publish")
+							return
+						}
+						err = client.Publish(pubsub.WORKFLOW_STATUS_UPDATE_TOPIC, string(reqBody))
+						if err != nil {
+							logger.Errorw("Error while publishing Request", err)
+							return
+						}
+						logger.Debug("workflow update sent")
+					}
+				},
+			})
+			stopCh := make(chan struct{})
+			defer close(stopCh)
+			go workflowInformer.Run(stopCh)
 		}
 
 		///-------------------
 		cdCfg := &CdConfig{}
 		err = env.Parse(cdCfg)
 		if err != nil {
-			log.Panic("err", err)
+			logger.Fatal("err %s", err)
 		}
 
 		if cdCfg.CdInformer {
 
 			//informer := util.NewWorkflowInformer(cfg, cdCfg.DefaultNamespace, 0, nil)
-			//informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-			//	// When a new wf gets created
-			//	AddFunc: func(obj interface{}) {
-			//		log.Println("cd workflow created")
-			//	},
-			//	// When a wf gets updated
-			//	UpdateFunc: func(oldWf interface{}, newWf interface{}) {
-			//		log.Println("cd workflow update detected")
-			//		if workflow, ok := newWf.(*unstructured.Unstructured).Object["status"]; ok {
-			//			wfJson, err := json.Marshal(workflow)
-			//			if err != nil {
-			//				log.Println("err", err)
-			//				return
-			//			}
-			//			log.Println("sending cd workflow update event ", string(wfJson))
-			//			var reqBody = []byte(wfJson)
-			//			if client == nil {
-			//				log.Println("dont't publish")
-			//				return
-			//			}
-			//
-			//			err = client.Publish(pubsub.CD_WORKFLOW_STATUS_UPDATE, string(reqBody))
-			//			if err != nil {
-			//				log.Println("Error while publishing Request", err)
-			//				return
-			//			}
-			//			log.Println("cd workflow update sent")
-			//		}
-			//	},
-			//	// When a wf gets deleted
-			//	DeleteFunc: func(wf interface{}) {},
-			//})
-			//
-			//stopCh := make(chan struct{})
-			//defer close(stopCh)
-			//go informer.Run(stopCh)
+			cdWorkflowInformer := util2.NewWorkflowInformer(dynamicClient, cdCfg.DefaultNamespace, 0, nil, cache.Indexers{})
+			cdWorkflowInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+				// When a new wf gets created
+				AddFunc: func(obj interface{}) {
+					logger.Debug("cd workflow created")
+				},
+				// When a wf gets updated
+				UpdateFunc: func(oldWf interface{}, newWf interface{}) {
+					logger.Info("cd workflow update detected")
+					if workflow, ok := newWf.(*unstructured.Unstructured).Object["status"]; ok {
+						wfJson, err := json.Marshal(workflow)
+						if err != nil {
+							logger.Errorw("error occurred while marshalling workflowJson", "err", err)
+							return
+						}
+						logger.Debugw("sending cd workflow update event ", "workflow", string(wfJson))
+						var reqBody = []byte(wfJson)
+						if client == nil {
+							log.Println("dont't publish")
+							return
+						}
+
+						err = client.Publish(pubsub.CD_WORKFLOW_STATUS_UPDATE, string(reqBody))
+						if err != nil {
+							logger.Errorw("Error while publishing Request", "err", err)
+							return
+						}
+						logger.Debug("cd workflow update sent")
+					}
+				},
+				// When a wf gets deleted
+				DeleteFunc: func(wf interface{}) {},
+			})
+
+			stopCh := make(chan struct{})
+			defer close(stopCh)
+			go cdWorkflowInformer.Run(stopCh)
 		}
 
 		acdCfg := &AcdConfig{}
@@ -540,107 +549,109 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 		}
 
 		if acdCfg.ACDInformer {
-			log.Println("starting acd informer")
-			//clientset := versioned.NewForConfigOrDie(cfg)
-			//acdInformer := v1alpha1.NewApplicationInformer(clientset, acdCfg.ACDNamespace, 0, nil)
-			//
-			//acdInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-			//	AddFunc: func(obj interface{}) {
-			//		log.Println("app added")
-			//		if app, ok := obj.(*v1alpha12.Application); ok {
-			//			log.Println("new app detected: " + app.Name + " " + app.Status.Health.Status)
-			//			//SendAppUpdate(app, client, nil)
-			//		}
-			//	},
-			//	UpdateFunc: func(old interface{}, new interface{}) {
-			//		log.Println("app update detected")
-			//		statusTime := time.Now()
-			//		if oldApp, ok := old.(*v1alpha12.Application); ok {
-			//			if newApp, ok := new.(*v1alpha12.Application); ok {
-			//				if newApp.Status.History != nil && len(newApp.Status.History) > 0 {
-			//					if oldApp.Status.History == nil || len(oldApp.Status.History) == 0 {
-			//						log.Println("new deployment detected")
-			//						SendAppUpdate(newApp, client, statusTime)
-			//					} else {
-			//						log.Println("old deployment detected for update: name:" + oldApp.Name + ", status:" + oldApp.Status.Health.Status)
-			//						oldRevision := oldApp.Status.Sync.Revision
-			//						newRevision := newApp.Status.Sync.Revision
-			//						oldStatus := string(oldApp.Status.Health.Status)
-			//						newStatus := string(newApp.Status.Health.Status)
-			//						newSyncStatus := string(newApp.Status.Sync.Status)
-			//						oldSyncStatus := string(oldApp.Status.Sync.Status)
-			//						if (oldRevision != newRevision) || (oldStatus != newStatus) || (newSyncStatus != oldSyncStatus) {
-			//							SendAppUpdate(newApp, client, statusTime)
-			//							log.Println("send update app:" + oldApp.Name + ", oldRevision: " + oldRevision + ", newRevision:" +
-			//								newRevision + ", oldStatus: " + oldStatus + ", newStatus: " + newStatus +
-			//								", newSyncStatus: " + newSyncStatus + ", oldSyncStatus: " + oldSyncStatus)
-			//						} else {
-			//							log.Println("skip updating app:" + oldApp.Name + ", oldRevision: " + oldRevision + ", newRevision:" +
-			//								newRevision + ", oldStatus: " + oldStatus + ", newStatus: " + newStatus +
-			//								", newSyncStatus: " + newSyncStatus + ", oldSyncStatus: " + oldSyncStatus)
-			//						}
-			//					}
-			//				}
-			//			} else {
-			//				log.Println("app update detected, but skip updating, there is no new app")
-			//			}
-			//		} else {
-			//			log.Println("app update detected, but skip updating, there is no old app")
-			//		}
-			//	},
-			//	DeleteFunc: func(obj interface{}) {
-			//		if app, ok := obj.(*v1alpha12.Application); ok {
-			//			statusTime := time.Now()
-			//			log.Println("app delete detected" + app.Name + " " + app.Status.Health.Status)
-			//			SendAppDelete(app, client, statusTime)
-			//		}
-			//	},
-			//})
-			//
-			//appStopCh := make(chan struct{})
-			//defer close(appStopCh)
-			//go acdInformer.Run(appStopCh)
+			logger.Info("starting acd informer")
+			clientset := versioned2.NewForConfigOrDie(cfg)
+			acdInformer := appinformers.NewApplicationInformer(clientset, acdCfg.ACDNamespace, 0, cache.Indexers{})
+
+			acdInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+				AddFunc: func(obj interface{}) {
+					logger.Debug("app added")
+
+					if app, ok := obj.(*v1alpha1.Application); ok {
+						logger.Debugf("new app detected: %s, status:%s", app.Name, app.Status.Health.Status)
+						//SendAppUpdate(app, client, nil)
+					}
+				},
+				UpdateFunc: func(old interface{}, new interface{}) {
+					logger.Debug("app update detected")
+					statusTime := time.Now()
+					if oldApp, ok := old.(*v1alpha1.Application); ok {
+						if newApp, ok := new.(*v1alpha1.Application); ok {
+							if newApp.Status.History != nil && len(newApp.Status.History) > 0 {
+								if oldApp.Status.History == nil || len(oldApp.Status.History) == 0 {
+									logger.Debug("new deployment detected")
+									SendAppUpdate(newApp, client, statusTime)
+								} else {
+									logger.Debugf("old deployment detected for update: %s, status:%s", oldApp.Name, oldApp.Status.Health.Status)
+									oldRevision := oldApp.Status.Sync.Revision
+									newRevision := newApp.Status.Sync.Revision
+									oldStatus := string(oldApp.Status.Health.Status)
+									newStatus := string(newApp.Status.Health.Status)
+									newSyncStatus := string(newApp.Status.Sync.Status)
+									oldSyncStatus := string(oldApp.Status.Sync.Status)
+									if (oldRevision != newRevision) || (oldStatus != newStatus) || (newSyncStatus != oldSyncStatus) {
+										SendAppUpdate(newApp, client, statusTime)
+										logger.Debug("send update app:" + oldApp.Name + ", oldRevision: " + oldRevision + ", newRevision:" +
+											newRevision + ", oldStatus: " + oldStatus + ", newStatus: " + newStatus +
+											", newSyncStatus: " + newSyncStatus + ", oldSyncStatus: " + oldSyncStatus)
+									} else {
+										logger.Debug("skip updating app:" + oldApp.Name + ", oldRevision: " + oldRevision + ", newRevision:" +
+											newRevision + ", oldStatus: " + oldStatus + ", newStatus: " + newStatus +
+											", newSyncStatus: " + newSyncStatus + ", oldSyncStatus: " + oldSyncStatus)
+									}
+								}
+							}
+						} else {
+							log.Println("app update detected, but skip updating, there is no new app")
+						}
+					} else {
+						log.Println("app update detected, but skip updating, there is no old app")
+					}
+				},
+				DeleteFunc: func(obj interface{}) {
+					if app, ok := obj.(*v1alpha1.Application); ok {
+						statusTime := time.Now()
+						logger.Debugf("app delete detected: %s, status:%s", app.Name, app.Status.Health.Status)
+						SendAppDelete(app, client, statusTime)
+					}
+				},
+			})
+
+			appStopCh := make(chan struct{})
+			defer close(appStopCh)
+			go acdInformer.Run(appStopCh)
 		}
 
 	}
 	///------------
 
 	if externalCD.External {
-		log.Println("applying listner for external")
+		logger.Info("applying listner for external")
 		//informer := util.NewWorkflowInformer(cfg, externalCD.Namespace, 0, nil)
-		//informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		//	// When a new wf gets created
-		//	AddFunc: func(obj interface{}) {
-		//		log.Println("external cd workflow created")
-		//	},
-		//	// When a wf gets updated
-		//	UpdateFunc: func(oldWf interface{}, newWf interface{}) {
-		//		//TODO apply filter for devtron
-		//		log.Println("external wf event received")
-		//		if workflow, ok := newWf.(*unstructured.Unstructured).Object["status"]; ok {
-		//			wfJson, err := json.Marshal(workflow)
-		//			if err != nil {
-		//				log.Println("err", err)
-		//				return
-		//			}
-		//			log.Println("sending external cd workflow update event ", string(wfJson))
-		//			var reqBody = []byte(wfJson)
-		//
-		//			err = PublishEventsOnRest(reqBody, pubsub.CD_WORKFLOW_STATUS_UPDATE, externalCD)
-		//			if err != nil {
-		//				log.Println("publish cd err", "err", err)
-		//				return
-		//			}
-		//			log.Println("external cd workflow update sent")
-		//		}
-		//	},
-		//	// When a wf gets deleted
-		//	DeleteFunc: func(wf interface{}) {},
-		//})
-		//
-		//stopCh := make(chan struct{})
-		//defer close(stopCh)
-		//go informer.Run(stopCh)
+		informer := util2.NewWorkflowInformer(dynamicClient, externalCD.Namespace, 0, nil, cache.Indexers{})
+		informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+			// When a new wf gets created
+			AddFunc: func(obj interface{}) {
+				logger.Debug("external cd workflow created")
+			},
+			// When a wf gets updated
+			UpdateFunc: func(oldWf interface{}, newWf interface{}) {
+				//TODO apply filter for devtron
+				logger.Info("external wf event received")
+				if workflow, ok := newWf.(*unstructured.Unstructured).Object["status"]; ok {
+					wfJson, err := json.Marshal(workflow)
+					if err != nil {
+						logger.Errorw("error occurred while marshalling workflow", "err", err)
+						return
+					}
+					logger.Debugw("sending external cd workflow update event ","workflow", string(wfJson))
+					var reqBody = []byte(wfJson)
+
+					err = PublishEventsOnRest(reqBody, pubsub.CD_WORKFLOW_STATUS_UPDATE, externalCD)
+					if err != nil {
+						logger.Errorw("publish cd err", "err", err)
+						return
+					}
+					logger.Debug("external cd workflow update sent")
+				}
+			},
+			// When a wf gets deleted
+			DeleteFunc: func(wf interface{}) {},
+		})
+
+		stopCh := make(chan struct{})
+		defer close(stopCh)
+		go informer.Run(stopCh)
 	}
 
 	sigterm := make(chan os.Signal, 1)
@@ -688,60 +699,60 @@ func PublishEventsOnRest(jsonBody []byte, topic string, externalCdConfig *Extern
 	return nil
 }
 
-//type ApplicationDetail struct {
-//	Application *v1alpha12.Application `json:"application"`
-//	StatusTime  time.Time              `json:"statusTime"`
-//}
-//
-//func SendAppUpdate(app *v1alpha12.Application, client *pubsub.PubSubClientServiceImpl, statusTime time.Time) {
-//	if client == nil {
-//		log.Println("client is nil, don't send update")
-//		return
-//	}
-//	appDetail := ApplicationDetail{
-//		Application: app,
-//		StatusTime:  statusTime,
-//	}
-//	appJson, err := json.Marshal(appDetail)
-//	if err != nil {
-//		log.Println("marshal error on sending app update", err)
-//		return
-//	}
-//	log.Println("app update event for publish: ", string(appJson))
-//	var reqBody = []byte(appJson)
-//
-//	err = client.Publish(pubsub.APPLICATION_STATUS_UPDATE_TOPIC, string(reqBody))
-//	if err != nil {
-//		log.Println("Error while publishing Request", err)
-//		return
-//	}
-//	log.Println("app update sent for app: " + app.Name)
-//}
-//
-//func SendAppDelete(app *v1alpha12.Application, client *pubsub.PubSubClientServiceImpl, statusTime time.Time) {
-//	if client == nil {
-//		log.Println("client is nil, don't send delete update")
-//		return
-//	}
-//	appDetail := ApplicationDetail{
-//		Application: app,
-//		StatusTime:  statusTime,
-//	}
-//	appJson, err := json.Marshal(appDetail)
-//	if err != nil {
-//		log.Println("marshal error on sending app delete update", err)
-//		return
-//	}
-//	log.Println("app delete event for publish: ", string(appJson))
-//	var reqBody = []byte(appJson)
-//
-//	err = client.Publish(pubsub.APPLICATION_STATUS_DELETE_TOPIC, string(reqBody))
-//	if err != nil {
-//		log.Println("Error while publishing Request", err)
-//		return
-//	}
-//	log.Println("app update sent for app: " + app.Name)
-//}
+type ApplicationDetail struct {
+	Application *v1alpha1.Application `json:"application"`
+	StatusTime  time.Time              `json:"statusTime"`
+}
+
+func SendAppUpdate(app *v1alpha1.Application, client *pubsub.PubSubClientServiceImpl, statusTime time.Time) {
+	if client == nil {
+		log.Println("client is nil, don't send update")
+		return
+	}
+	appDetail := ApplicationDetail{
+		Application: app,
+		StatusTime:  statusTime,
+	}
+	appJson, err := json.Marshal(appDetail)
+	if err != nil {
+		log.Println("marshal error on sending app update", err)
+		return
+	}
+	log.Println("app update event for publish: ", string(appJson))
+	var reqBody = []byte(appJson)
+
+	err = client.Publish(pubsub.APPLICATION_STATUS_UPDATE_TOPIC, string(reqBody))
+	if err != nil {
+		log.Println("Error while publishing Request", err)
+		return
+	}
+	log.Println("app update sent for app: " + app.Name)
+}
+
+func SendAppDelete(app *v1alpha1.Application, client *pubsub.PubSubClientServiceImpl, statusTime time.Time) {
+	if client == nil {
+		log.Println("client is nil, don't send delete update")
+		return
+	}
+	appDetail := ApplicationDetail{
+		Application: app,
+		StatusTime:  statusTime,
+	}
+	appJson, err := json.Marshal(appDetail)
+	if err != nil {
+		log.Println("marshal error on sending app delete update", err)
+		return
+	}
+	log.Println("app delete event for publish: ", string(appJson))
+	var reqBody = []byte(appJson)
+
+	err = client.Publish(pubsub.APPLICATION_STATUS_DELETE_TOPIC, string(reqBody))
+	if err != nil {
+		log.Println("Error while publishing Request", err)
+		return
+	}
+	log.Println("app update sent for app: " + app.Name)
+}
 
 func NewPubSubClient() (*pubsub.PubSubClientServiceImpl, error) {
 
@@ -903,12 +914,12 @@ func (c *Controller) processItem(newEvent Event) error {
 	return nil
 }
 
-func getDevConfig() (*rest.Config, error) {
+func getDevConfig(configName string) (*rest.Config, error) {
 	usr, err := user.Current()
 	if err != nil {
 		return nil, err
 	}
-	kubeconfig := flag.String("kubeconfig", filepath.Join(usr.HomeDir, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
+	kubeconfig := flag.String(configName, filepath.Join(usr.HomeDir, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
 	flag.Parse()
 	cfg, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
 	if err != nil {

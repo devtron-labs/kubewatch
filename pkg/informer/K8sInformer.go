@@ -2,6 +2,7 @@ package informer
 
 import (
 	"errors"
+	"flag"
 	"fmt"
 	"github.com/caarlos0/env"
 	repository "github.com/devtron-labs/kubewatch/pkg/cluster"
@@ -12,6 +13,9 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/clientcmd"
+	"os/user"
+	"path/filepath"
 	"strconv"
 	"sync"
 	"time"
@@ -56,6 +60,7 @@ type K8sInformerImpl struct {
 	informerStopper    map[int]chan struct{}
 	clusterRepository  repository.ClusterRepository
 	helmReleaseConfig  *HelmReleaseConfig
+	DevConfig *rest.Config
 }
 
 func Newk8sInformerImpl(logger *zap.SugaredLogger, clusterRepository repository.ClusterRepository) *K8sInformerImpl {
@@ -63,6 +68,8 @@ func Newk8sInformerImpl(logger *zap.SugaredLogger, clusterRepository repository.
 		logger:            logger,
 		clusterRepository: clusterRepository,
 	}
+	devConfig,_ := getDevConfig("kubeconfigK8s")
+	informerFactory.DevConfig = devConfig
 	//informerFactory.HelmListClusterMap = make(map[int]map[string]*client.DeployedAppDetail)
 	informerFactory.informerStopper = make(map[int]chan struct{})
 	//if helmReleaseConfig.EnableHelmReleaseCache {
@@ -132,14 +139,29 @@ func (impl *K8sInformerImpl) BuildInformerForAllClusters() error {
 	return nil
 }
 
+func getDevConfig(configName string) (*rest.Config, error) {
+	usr, err := user.Current()
+	if err != nil {
+		return nil, err
+	}
+	kubeconfig := flag.String(configName, filepath.Join(usr.HomeDir, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
+	flag.Parse()
+	cfg, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
+	if err != nil {
+		return nil, err
+	}
+	return cfg, nil
+}
+
 func (impl *K8sInformerImpl) startInformer(clusterInfo ClusterInfo) error {
 
 	restConfig := &rest.Config{}
 	if clusterInfo.ClusterName == DEFAULT_CLUSTER {
 		config, err := rest.InClusterConfig()
 		if err != nil {
-			impl.logger.Error("error in fetch default cluster config", "err", err, "servername", restConfig.ServerName)
-			return err
+			config = impl.DevConfig
+			//impl.logger.Error("error in fetch default cluster config", "err", err, "servername", restConfig.ServerName)
+			//return err //TODO KB: remove this
 		}
 		restConfig = config
 	} else {
@@ -314,8 +336,9 @@ func (impl *K8sInformerImpl) startInformerAndPopulateCache(clusterId int) error 
 	if clusterInfo.ClusterName == DEFAULT_CLUSTER {
 		restConfig, err = rest.InClusterConfig()
 		if err != nil {
-			impl.logger.Error("error in fetch default cluster config", "err", err, "clusterName", clusterInfo.ClusterName)
-			return err
+			restConfig = impl.DevConfig
+			//impl.logger.Error("error in fetch default cluster config", "err", err, "clusterName", clusterInfo.ClusterName)
+			//return err //TODO KB: remove this
 		}
 	} else {
 		restConfig = &rest.Config{
