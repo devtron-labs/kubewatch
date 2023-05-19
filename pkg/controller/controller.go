@@ -135,7 +135,6 @@ var client *pubsub.PubSubClientServiceImpl
 
 func Start(conf *config.Config, eventHandler handlers.Handler) {
 	logger := logger.NewSugaredLogger()
-	startJobInformer(logger)
 	//var kubeClient kubernetes.Interface
 	cfg, _ := getDevConfig("kubeconfig")
 	//cfg, err := rest.InClusterConfig() //TODO KB: use this
@@ -502,6 +501,8 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 
 		if cdCfg.CdInformer {
 
+			startJobInformer(logger)
+
 			//informer := util.NewWorkflowInformer(cfg, cdCfg.DefaultNamespace, 0, nil)
 			cdWorkflowInformer := util2.NewWorkflowInformer(dynamicClient, cdCfg.DefaultNamespace, 0, nil, cache.Indexers{})
 			cdWorkflowInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -667,7 +668,7 @@ func startJobInformer(logger *zap.SugaredLogger) error {
 		return err
 	}
 	clusterRepositoryImpl := repository.NewClusterRepositoryImpl(connection, logger)
-	k8sInformerImpl := informer.Newk8sInformerImpl(logger, clusterRepositoryImpl)
+	k8sInformerImpl := informer.Newk8sInformerImpl(logger, clusterRepositoryImpl, client)
 	err = k8sInformerImpl.BuildInformerForAllClusters()
 	return err
 }
