@@ -1,7 +1,10 @@
 package utils
 
 import (
+	"flag"
 	"os"
+	"os/user"
+	"path/filepath"
 
 	"github.com/sirupsen/logrus"
 	apps_v1 "k8s.io/api/apps/v1"
@@ -47,6 +50,24 @@ func GetClientOutOfCluster() kubernetes.Interface {
 	clientset, err := kubernetes.NewForConfig(config)
 
 	return clientset
+}
+
+func GetDefaultK8sConfig(configName string) (*rest.Config, error) {
+	cfg, err := rest.InClusterConfig()
+	if err == nil {
+		return cfg, nil
+	}
+	usr, err := user.Current()
+	if err != nil {
+		return nil, err
+	}
+	kubeconfig := flag.String(configName, filepath.Join(usr.HomeDir, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
+	flag.Parse()
+	cfg, err = clientcmd.BuildConfigFromFlags("", *kubeconfig)
+	if err != nil {
+		return nil, err
+	}
+	return cfg, nil
 }
 
 // GetObjectMetaData returns metadata of a given k8s object

@@ -3,13 +3,12 @@ package informer
 import (
 	"encoding/json"
 	"errors"
-	"flag"
 	"fmt"
 	"github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
 	"github.com/argoproj/argo-workflows/v3/workflow/common"
-	"github.com/caarlos0/env"
 	pubsub "github.com/devtron-labs/common-lib/pubsub-lib"
 	repository "github.com/devtron-labs/kubewatch/pkg/cluster"
+	"github.com/devtron-labs/kubewatch/pkg/utils"
 	"go.uber.org/zap"
 	coreV1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -17,11 +16,8 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/utils/pointer"
 	"log"
-	"os/user"
-	"path/filepath"
 	"sort"
 	"strconv"
 	"sync"
@@ -44,20 +40,11 @@ const (
 )
 
 type K8sInformer interface {
-	startInformer(clusterInfo ClusterInfo) error
-	syncInformer(clusterId int) error
-	stopInformer(clusterName string, clusterId int)
-	startInformerForCluster(clusterId int) error
-}
-
-type HelmReleaseConfig struct {
-	EnableHelmReleaseCache bool `env:"ENABLE_HELM_RELEASE_CACHE" envDefault:"true"`
-}
-
-func GetHelmReleaseConfig() (*HelmReleaseConfig, error) {
-	cfg := &HelmReleaseConfig{}
-	err := env.Parse(cfg)
-	return cfg, err
+	startSystemWorkflowInformerForCluster(clusterInfo ClusterInfo) error
+	syncSystemWorkflowInformer(clusterId int) error
+	stopSystemWorkflowInformer(clusterId int)
+	startSystemWorkflowInformer(clusterId int) error
+	BuildInformerForAllClusters() error
 }
 
 type K8sInformerImpl struct {
@@ -65,111 +52,45 @@ type K8sInformerImpl struct {
 	mutex             sync.Mutex
 	informerStopper   map[int]chan struct{}
 	clusterRepository repository.ClusterRepository
-	helmReleaseConfig *HelmReleaseConfig
-	DevConfig         *rest.Config
+	DefaultK8sConfig  *rest.Config
 	pubSubClient      *pubsub.PubSubClientServiceImpl
 }
 
-func Newk8sInformerImpl(logger *zap.SugaredLogger, clusterRepository repository.ClusterRepository, client *pubsub.PubSubClientServiceImpl) *K8sInformerImpl {
+func NewK8sInformerImpl(logger *zap.SugaredLogger, clusterRepository repository.ClusterRepository, client *pubsub.PubSubClientServiceImpl) *K8sInformerImpl {
 	informerFactory := &K8sInformerImpl{
 		logger:            logger,
 		clusterRepository: clusterRepository,
 		pubSubClient:      client,
 	}
-	devConfig, _ := getDevConfig("kubeconfigK8s")
-	informerFactory.DevConfig = devConfig
-	//informerFactory.HelmListClusterMap = make(map[int]map[string]*pubSubClient.DeployedAppDetail)
+	defaultK8sConfig, _ := utils.GetDefaultK8sConfig("kubeconfigK8s")
+	informerFactory.DefaultK8sConfig = defaultK8sConfig
 	informerFactory.informerStopper = make(map[int]chan struct{})
-	//if helmReleaseConfig.EnableHelmReleaseCache {
-	//	go informerFactory.BuildInformerForAllClusters()
-	//}
 	return informerFactory
 }
 
-//func decodeRelease(data string) (*release.Release, error) {
-//	// base64 decode string
-//	b64 := base64.StdEncoding
-//	b, err := b64.DecodeString(data)
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	var magicGzip = []byte{0x1f, 0x8b, 0x08}
-//
-//	// For backwards compatibility with releases that were stored before
-//	// compression was introduced we skip decompression if the
-//	// gzip magic header is not found
-//	if len(b) > 3 && bytes.Equal(b[0:3], magicGzip) {
-//		r, err := gzip.NewReader(bytes.NewReader(b))
-//		if err != nil {
-//			return nil, err
-//		}
-//		defer r.Close()
-//		b2, err := ioutil.ReadAll(r)
-//		if err != nil {
-//			return nil, err
-//		}
-//		b = b2
-//	}
-//
-//	var rls release.Release
-//	// unmarshal release object bytes
-//	if err := json.Unmarshal(b, &rls); err != nil {
-//		return nil, err
-//	}
-//	return &rls, nil
-//}
-
 func (impl *K8sInformerImpl) BuildInformerForAllClusters() error {
+
+	impl.startClusterInformer()
 	models, err := impl.clusterRepository.FindAllActive()
 	if err != nil {
 		impl.logger.Error("error in fetching clusters", "err", err)
 		return err
 	}
 	for _, model := range models {
-
-		bearerToken := model.Config["bearer_token"]
-
-		clusterInfo := &ClusterInfo{
-			ClusterId:   model.Id,
-			ClusterName: model.ClusterName,
-			BearerToken: bearerToken,
-			ServerUrl:   model.ServerUrl,
-		}
-		err := impl.startInformer(*clusterInfo)
-		if err != nil {
-			impl.logger.Error("error in starting informer for cluster ", "cluster-name ", clusterInfo.ClusterName, "err", err)
-			return err
-		}
-
+		impl.startSystemWorkflowInformer(model.Id)
 	}
-
 	return nil
 }
 
-func getDevConfig(configName string) (*rest.Config, error) {
-	usr, err := user.Current()
-	if err != nil {
-		return nil, err
-	}
-	kubeconfig := flag.String(configName, filepath.Join(usr.HomeDir, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
-	flag.Parse()
-	cfg, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
-	if err != nil {
-		return nil, err
-	}
-	return cfg, nil
-}
-
-func (impl *K8sInformerImpl) startInformer(clusterInfo ClusterInfo) error {
+func (impl *K8sInformerImpl) startSystemWorkflowInformerForCluster(clusterInfo ClusterInfo) error {
 
 	restConfig := &rest.Config{}
 	if clusterInfo.ClusterName == DEFAULT_CLUSTER {
 		config, err := rest.InClusterConfig()
 		if err != nil {
-			config = impl.DevConfig
-			//impl.logger.Error("error in fetch default cluster config", "err", err, "servername", restConfig.ServerName)
-			//return err //TODO KB: remove this
+			//config = impl.DefaultK8sConfig
+			impl.logger.Error("error in fetch default cluster config", "err", err, "servername", restConfig.ServerName)
+			return err //TODO KB: remove this
 		}
 		restConfig = config
 	} else {
@@ -178,115 +99,7 @@ func (impl *K8sInformerImpl) startInformer(clusterInfo ClusterInfo) error {
 		restConfig.Insecure = true
 	}
 
-	httpClientFor, err := rest.HTTPClientFor(restConfig)
-	if err != nil {
-		impl.logger.Error("error occurred while overriding k8s pubSubClient", "reason", err)
-		return err
-	}
-	clusterClient, err := kubernetes.NewForConfigAndClient(restConfig, httpClientFor)
-	if err != nil {
-		impl.logger.Error("error in create k8s config", "err", err)
-		return err
-	}
-
-	// for default cluster adding an extra informer, this informer will add informer on new clusters
-	if clusterInfo.ClusterName == DEFAULT_CLUSTER {
-		impl.logger.Debug("Starting informer, reading new cluster request for default cluster")
-		labelOptions := kubeinformers.WithTweakListOptions(func(opts *metav1.ListOptions) {
-			//kubectl  get  secret --field-selector type==cluster.request/modify --all-namespaces
-			opts.FieldSelector = "type==cluster.request/modify"
-		})
-		informerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(clusterClient, 15*time.Minute, labelOptions)
-		stopper := make(chan struct{})
-		secretInformer := informerFactory.Core().V1().Secrets()
-		secretInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-			AddFunc: func(obj interface{}) {
-				impl.logger.Debug("Event received in cluster secret Add informer", "time", time.Now())
-				if secretObject, ok := obj.(*coreV1.Secret); ok {
-					if secretObject.Type != CLUSTER_MODIFY_EVENT_SECRET_TYPE {
-						return
-					}
-					data := secretObject.Data
-					action := data["action"]
-					id := string(data["cluster_id"])
-					id_int, _ := strconv.Atoi(id)
-
-					if string(action) == ADD {
-						err = impl.startInformerForCluster(id_int)
-						if err != nil && err != errors.New(INFORMER_ALREADY_EXIST_MESSAGE) {
-							impl.logger.Debug("error in adding informer for cluster", "id", id_int, "err", err)
-							return
-						}
-					}
-					if string(action) == UPDATE {
-						err = impl.syncInformer(id_int)
-						if err != nil && err != errors.New(INFORMER_ALREADY_EXIST_MESSAGE) {
-							impl.logger.Debug("error in updating informer for cluster", "id", clusterInfo.ClusterId, "name", clusterInfo.ClusterName, "err", err)
-							return
-						}
-					}
-				}
-			},
-			UpdateFunc: func(oldObj, newObj interface{}) {
-				impl.logger.Debug("Event received in cluster secret update informer", "time", time.Now())
-				if secretObject, ok := newObj.(*coreV1.Secret); ok {
-					if secretObject.Type != CLUSTER_MODIFY_EVENT_SECRET_TYPE {
-						return
-					}
-					data := secretObject.Data
-					action := data["action"]
-					id := string(data["cluster_id"])
-					id_int, _ := strconv.Atoi(id)
-
-					if string(action) == ADD {
-						err = impl.startInformerForCluster(clusterInfo.ClusterId)
-						if err != nil && err != errors.New(INFORMER_ALREADY_EXIST_MESSAGE) {
-							impl.logger.Error("error in adding informer for cluster", "id", id_int, "err", err)
-							return
-						}
-					}
-					if string(action) == UPDATE {
-						err := impl.syncInformer(id_int)
-						if err != nil && err != errors.New(INFORMER_ALREADY_EXIST_MESSAGE) {
-							impl.logger.Error("error in updating informer for cluster", "id", clusterInfo.ClusterId, "name", clusterInfo.ClusterName, "err", err)
-							return
-						}
-					}
-				}
-			},
-			DeleteFunc: func(obj interface{}) {
-				impl.logger.Debug("Event received in secret delete informer", "time", time.Now())
-				if secretObject, ok := obj.(*coreV1.Secret); ok {
-					if secretObject.Type != CLUSTER_MODIFY_EVENT_SECRET_TYPE {
-						return
-					}
-					data := secretObject.Data
-					action := data["action"]
-					id := string(data["cluster_id"])
-					id_int, _ := strconv.Atoi(id)
-
-					if string(action) == "delete" {
-						deleteClusterInfo, err := impl.clusterRepository.FindByIdWithActiveFalse(id_int)
-						if err != nil {
-							impl.logger.Error("Error in fetching cluster by id", "cluster-id ", id_int)
-							return
-						}
-						impl.stopInformer(deleteClusterInfo.ClusterName, deleteClusterInfo.Id)
-						if err != nil {
-							impl.logger.Error("error in updating informer for cluster", "id", clusterInfo.ClusterId, "name", clusterInfo.ClusterName, "err", err)
-							return
-						}
-					}
-				}
-			},
-		})
-		informerFactory.Start(stopper)
-		//impl.informerStopper[clusterInfo.ClusterName+"_second_informer"] = stopper
-
-	}
-	// these informers will be used to populate helm release cache
-
-	err = impl.startInformerForCluster(clusterInfo.ClusterId)
+	err := impl.startSystemWorkflowInformer(clusterInfo.ClusterId)
 	if err != nil && err != errors.New(INFORMER_ALREADY_EXIST_MESSAGE) {
 		impl.logger.Error("error in creating informer for new cluster", "err", err)
 		return err
@@ -295,7 +108,122 @@ func (impl *K8sInformerImpl) startInformer(clusterInfo ClusterInfo) error {
 	return nil
 }
 
-func (impl *K8sInformerImpl) syncInformer(clusterId int) error {
+func (impl *K8sInformerImpl) startClusterInformer() {
+	impl.logger.Debug("Starting informer, reading new cluster request for default cluster")
+	//config, err := rest.InClusterConfig()
+	//if err != nil {
+	//	impl.logger.Errorw("error occurred while extracting cluster config", "err", err)
+	//	return
+	//}
+	config := impl.DefaultK8sConfig
+	clusterClient, err := impl.getK8sClientForConfig(config)
+	if err != nil {
+		return
+	}
+
+	labelOptions := kubeinformers.WithTweakListOptions(func(opts *metav1.ListOptions) {
+		opts.FieldSelector = "type==cluster.request/modify"
+	})
+	informerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(clusterClient, 15*time.Minute, labelOptions)
+	stopper := make(chan struct{})
+	secretInformer := informerFactory.Core().V1().Secrets()
+	secretInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(newObj interface{}) {
+			impl.logger.Debug("Event received in cluster secret Add informer", "time", time.Now())
+			if secretObject, ok := newObj.(*coreV1.Secret); ok {
+				impl.handleClusterChangeEvent(secretObject)
+			}
+		},
+		UpdateFunc: func(oldObj, newObj interface{}) {
+			impl.logger.Debug("Event received in cluster secret update informer", "time", time.Now())
+			if secretObject, ok := newObj.(*coreV1.Secret); ok {
+				impl.handleClusterChangeEvent(secretObject)
+			}
+		},
+		DeleteFunc: func(obj interface{}) {
+			impl.logger.Debugw("Event received in secret delete informer", "time", time.Now())
+			if secretObject, ok := obj.(*coreV1.Secret); ok {
+				if impl.handleClusterDeleteEvent(secretObject) {
+					return
+				}
+			}
+		},
+	})
+	informerFactory.Start(stopper)
+}
+
+func (impl *K8sInformerImpl) getK8sClientForConfig(config *rest.Config) (*kubernetes.Clientset, error) {
+	httpClientFor, err := rest.HTTPClientFor(config)
+	if err != nil {
+		impl.logger.Errorw("error occurred while overriding k8s pubSubClient", "reason", err)
+		return nil, err
+	}
+	clusterClient, err := kubernetes.NewForConfigAndClient(config, httpClientFor)
+	if err != nil {
+		impl.logger.Errorw("error in create k8s config", "err", err)
+		return nil, err
+	}
+	return clusterClient, nil
+}
+
+func (impl *K8sInformerImpl) handleClusterDeleteEvent(secretObject *coreV1.Secret) bool {
+	if secretObject.Type != CLUSTER_MODIFY_EVENT_SECRET_TYPE {
+		return true
+	}
+	data := secretObject.Data
+	action := data["action"]
+	id := string(data["cluster_id"])
+	clusterId, _ := strconv.Atoi(id)
+
+	if string(action) == "delete" {
+		if impl.handleClusterDelete(clusterId) {
+			return true
+		}
+	}
+	return false
+}
+
+func (impl *K8sInformerImpl) handleClusterDelete(clusterId int) bool {
+	deleteClusterInfo, err := impl.clusterRepository.FindByIdWithActiveFalse(clusterId)
+	if err != nil {
+		impl.logger.Errorw("Error in fetching cluster by id", "cluster-id ", clusterId, "err", err)
+		return true
+	}
+	impl.stopSystemWorkflowInformer(deleteClusterInfo.Id)
+	if err != nil {
+		impl.logger.Errorw("error in updating informer for cluster", "id", clusterId, "err", err)
+		return true
+	}
+	return false
+}
+
+func (impl *K8sInformerImpl) handleClusterChangeEvent(secretObject *coreV1.Secret) {
+	if secretObject.Type != CLUSTER_MODIFY_EVENT_SECRET_TYPE {
+		return
+	}
+	data := secretObject.Data
+	action := data["action"]
+	id := string(data["cluster_id"])
+	clusterId, _ := strconv.Atoi(id)
+	var err error
+
+	if string(action) == ADD {
+		err = impl.startSystemWorkflowInformer(clusterId)
+		if err != nil && err != errors.New(INFORMER_ALREADY_EXIST_MESSAGE) {
+			impl.logger.Error("error in adding informer for cluster", "id", clusterId, "err", err)
+			return
+		}
+	} else if string(action) == UPDATE {
+		err = impl.syncSystemWorkflowInformer(clusterId)
+		if err != nil && err != errors.New(INFORMER_ALREADY_EXIST_MESSAGE) {
+			impl.logger.Errorw("error in updating informer for cluster", "id", clusterId, "err", err)
+			return
+		}
+	}
+	return
+}
+
+func (impl *K8sInformerImpl) syncSystemWorkflowInformer(clusterId int) error {
 
 	clusterInfo, err := impl.clusterRepository.FindById(clusterId)
 	if err != nil {
@@ -304,10 +232,10 @@ func (impl *K8sInformerImpl) syncInformer(clusterId int) error {
 	}
 	//before creating new informer for cluster, close existing one
 	impl.logger.Debugw("stopping informer for cluster - ", "cluster-name", clusterInfo.ClusterName, "cluster-id", clusterInfo.Id)
-	impl.stopInformer(clusterInfo.ClusterName, clusterInfo.Id)
+	impl.stopSystemWorkflowInformer(clusterInfo.Id)
 	impl.logger.Debugw("informer stopped", "cluster-name", clusterInfo.ClusterName, "cluster-id", clusterInfo.Id)
 	//create new informer for cluster with new config
-	err = impl.startInformerForCluster(clusterId)
+	err = impl.startSystemWorkflowInformer(clusterId)
 	if err != nil {
 		impl.logger.Errorw("error in starting informer for ", "cluster name", clusterInfo.ClusterName)
 		return err
@@ -315,7 +243,7 @@ func (impl *K8sInformerImpl) syncInformer(clusterId int) error {
 	return nil
 }
 
-func (impl *K8sInformerImpl) stopInformer(clusterName string, clusterId int) {
+func (impl *K8sInformerImpl) stopSystemWorkflowInformer(clusterId int) {
 	stopper := impl.informerStopper[clusterId]
 	if stopper != nil {
 		close(stopper)
@@ -324,11 +252,11 @@ func (impl *K8sInformerImpl) stopInformer(clusterName string, clusterId int) {
 	return
 }
 
-func (impl *K8sInformerImpl) startInformerForCluster(clusterId int) error {
+func (impl *K8sInformerImpl) startSystemWorkflowInformer(clusterId int) error {
 
 	clusterInfo, err := impl.clusterRepository.FindById(clusterId)
 	if err != nil {
-		impl.logger.Error("error in fetching cluster by cluster ids")
+		impl.logger.Errorw("error in fetching cluster","clusterId",clusterId, "err", err)
 		return err
 	}
 
@@ -336,51 +264,19 @@ func (impl *K8sInformerImpl) startInformerForCluster(clusterId int) error {
 		impl.logger.Debug(fmt.Sprintf("informer for %s already exist", clusterInfo.ClusterName))
 		return errors.New(INFORMER_ALREADY_EXIST_MESSAGE)
 	}
-
-	impl.logger.Info("starting informer for cluster - ", "cluster-id ", clusterInfo.Id, "cluster-name ", clusterInfo.ClusterName)
-
-	restConfig := &rest.Config{}
-
-	if clusterInfo.ClusterName == DEFAULT_CLUSTER {
-		restConfig, err = rest.InClusterConfig()
-		if err != nil {
-			restConfig = impl.DevConfig
-			//impl.logger.Error("error in fetch default cluster config", "err", err, "clusterName", clusterInfo.ClusterName)
-			//return err //TODO KB: remove this
-		}
-	} else {
-		restConfig = &rest.Config{
-			Host:            clusterInfo.ServerUrl,
-			BearerToken:     clusterInfo.Config["bearer_token"],
-			TLSClientConfig: rest.TLSClientConfig{Insecure: true},
-		}
-	}
-
-	httpClientFor, err := rest.HTTPClientFor(restConfig)
+	impl.logger.Infow("starting informer for cluster", "clusterId", clusterInfo.Id, "clusterName", clusterInfo.ClusterName)
+	clusterClient, err := impl.getK8sClientForCluster(clusterInfo)
 	if err != nil {
-		impl.logger.Error("error occurred while overriding k8s pubSubClient", "reason", err)
-		return err
-	}
-	clusterClient, err := kubernetes.NewForConfigAndClient(restConfig, httpClientFor)
-	if err != nil {
-		impl.logger.Error("error in create k8s config", "err", err)
 		return err
 	}
 
 	labelOptions := kubeinformers.WithTweakListOptions(func(opts *metav1.ListOptions) {
-		//kubectl  get  secret --field-selector type==helm.sh/release.v1 -l status=deployed  --all-namespaces
 		opts.LabelSelector = "devtron.ai/purpose==workflow"
-		//opts.FieldSelector = "type==helm.sh/release.v1"
 	})
 	informerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(clusterClient, 15*time.Minute, labelOptions)
 	stopper := make(chan struct{})
 	jobsInformer := informerFactory.Core().V1().Pods()
 	jobsInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {
-			//if podObj, ok := obj.(*coreV1.Pod); ok {
-			//	impl.logger.Debugw("Event received in Pods add informer", "time", time.Now(), "podObjStatus", podObj.Status)
-			//}
-		},
 		UpdateFunc: func(oldObj, newObj interface{}) {
 			if podObj, ok := newObj.(*coreV1.Pod); ok {
 				impl.logger.Debugw("Event received in Pods update informer", "time", time.Now(), "podObjStatus", podObj.Status)
@@ -392,32 +288,38 @@ func (impl *K8sInformerImpl) startInformerForCluster(clusterId int) error {
 					return
 				}
 				impl.logger.Debugw("sending system executor cd workflow update event", "workflow", string(wfJson))
-				var reqBody = []byte(wfJson)
-				client := impl.pubSubClient
-				if client == nil {
-					log.Println("dont't publish")
+				if impl.pubSubClient == nil {
+					log.Println("don't publish")
 					return
 				}
 
-				err = client.Publish(pubsub.CD_WORKFLOW_STATUS_UPDATE, string(reqBody))
+				err = impl.pubSubClient.Publish(pubsub.CD_WORKFLOW_STATUS_UPDATE, string(wfJson))
 				if err != nil {
 					impl.logger.Errorw("Error while publishing Request", "err", err)
 					return
 				}
 				impl.logger.Debug("cd workflow update sent")
 			}
-			//TODO KB: Refer https://github.com/argoproj/argo-workflows/blob/master/workflow/controller/operator.go#LL1243C28-L1243C44
-		},
-		DeleteFunc: func(obj interface{}) {
-			if podObj, ok := obj.(*coreV1.Pod); ok {
-				impl.logger.Debugw("Event received in Pods delete informer", "time", time.Now(), "podObjStatus", podObj.Status)
-			}
 		},
 	})
 	informerFactory.Start(stopper)
-	impl.logger.Info("informer started for cluster: ", "cluster_id", clusterInfo.Id, "cluster_name", clusterInfo.ClusterName)
+	impl.logger.Infow("informer started for cluster", "clusterId", clusterInfo.Id, "clusterName", clusterInfo.ClusterName)
 	impl.informerStopper[clusterId] = stopper
 	return nil
+}
+
+func (impl *K8sInformerImpl) getK8sClientForCluster(clusterInfo *repository.Cluster) (*kubernetes.Clientset, error) {
+	restConfig := &rest.Config{}
+	if clusterInfo.ClusterName == DEFAULT_CLUSTER {
+		restConfig = impl.DefaultK8sConfig
+	} else {
+		restConfig = &rest.Config{
+			Host:            clusterInfo.ServerUrl,
+			BearerToken:     clusterInfo.Config["bearer_token"],
+			TLSClientConfig: rest.TLSClientConfig{Insecure: true},
+		}
+	}
+	return impl.getK8sClientForConfig(restConfig)
 }
 
 func (impl *K8sInformerImpl) assessNodeStatus(pod *coreV1.Pod) v1alpha1.NodeStatus {
@@ -439,50 +341,10 @@ func (impl *K8sInformerImpl) assessNodeStatus(pod *coreV1.Pod) v1alpha1.NodeStat
 		nodeStatus.Message = fmt.Sprintf("Unexpected pod phase for %s: %s", pod.ObjectMeta.Name, pod.Status.Phase)
 	}
 
-	// if it's ContainerSetTemplate pod then the inner container names should match to some node names,
-	// in this case need to update nodes according to container status
-	//for _, c := range pod.Status.ContainerStatuses {
-	//	ctrNodeName := fmt.Sprintf("%s.%s", oldPod.Name, c.Name)
-	//	if woc.wf.GetNodeByName(ctrNodeName) == nil {
-	//		continue
-	//	}
-	//	switch {
-	//	case c.State.Waiting != nil:
-	//		woc.markNodePhase(ctrNodeName, wfv1.NodePending)
-	//	case c.State.Running != nil:
-	//		woc.markNodePhase(ctrNodeName, wfv1.NodeRunning)
-	//	case c.State.Terminated != nil:
-	//		exitCode := int(c.State.Terminated.ExitCode)
-	//		message := fmt.Sprintf("%s (exit code %d): %s", c.State.Terminated.Reason, exitCode, c.State.Terminated.Message)
-	//		switch exitCode {
-	//		case 0:
-	//			woc.markNodePhase(ctrNodeName, wfv1.NodeSucceeded)
-	//		case 64:
-	//			// special emissary exit code indicating the emissary errors, rather than the sub-process failure,
-	//			// (unless the sub-process coincidentally exits with code 64 of course)
-	//			woc.markNodePhase(ctrNodeName, wfv1.NodeError, message)
-	//		default:
-	//			woc.markNodePhase(ctrNodeName, wfv1.NodeFailed, message)
-	//		}
-	//	}
-	//}
-
 	// only update Pod IP for daemoned nodes to reduce number of updates
 	if !nodeStatus.Completed() && nodeStatus.IsDaemoned() {
 		nodeStatus.PodIP = pod.Status.PodIP
 	}
-
-	//if x, ok := pod.Annotations[common.AnnotationKeyOutputs]; ok {
-	//	woc.log.Warn("workflow uses legacy/insecure pod patch, see https://argoproj.github.io/argo-workflows/workflow-rbac/")
-	//	if nodeStatus.Outputs == nil {
-	//		nodeStatus.Outputs = &wfv1.Outputs{}
-	//	}
-	//	if err := json.Unmarshal([]byte(x), nodeStatus.Outputs); err != nil {
-	//		nodeStatus.Phase = wfv1.NodeError
-	//		nodeStatus.Message = err.Error()
-	//	}
-	//}
-
 	nodeStatus.HostNodeName = pod.Spec.NodeName
 
 	if !nodeStatus.Progress.IsValid() {
@@ -505,31 +367,6 @@ func (impl *K8sInformerImpl) assessNodeStatus(pod *coreV1.Pod) v1alpha1.NodeStat
 		}
 		nodeStatus.Outputs.ExitCode = pointer.StringPtr(fmt.Sprint(*exitCode))
 	}
-
-	// If the init container failed, we should mark the node as failed.
-	//var initContainerFailed bool
-	//for _, c := range pod.Status.InitContainerStatuses {
-	//	if c.State.Terminated != nil && int(c.State.Terminated.ExitCode) != 0 {
-	//		nodeStatus.Phase = v1alpha1.NodeFailed
-	//		//initContainerFailed = true
-	//		impl.logger.Infow("marking node as failed since init container has non-zero exit code","newPhase", nodeStatus.Phase)
-	//		break
-	//	}
-	//}
-
-	// We cannot fail the node until the wait container is finished (unless any init container has failed) because it may be busy saving outputs, and these
-	// would not get captured successfully.
-	//for _, c := range pod.Status.ContainerStatuses {
-	//	if (c.Name == common.WaitContainerName && c.State.Terminated == nil && nodeStatus.Phase.Completed()) && !initContainerFailed {
-	//		impl.logger.Infow("leaving phase un-changed: wait container is not yet terminated","newPhase", nodeStatus.Phase)
-	//		nodeStatus.Phase = oldPod.Phase
-	//	}
-	//}
-
-	// if we are transitioning from Pending to a different state, clear out unchanged message
-	//if old.Phase == wfv1.NodePending && nodeStatus.Phase != wfv1.NodePending && old.Message == nodeStatus.Message {
-	//	nodeStatus.Message = ""
-	//}
 
 	if nodeStatus.Fulfilled() && nodeStatus.FinishedAt.IsZero() {
 		nodeStatus.FinishedAt = getLatestFinishedAt(pod)
