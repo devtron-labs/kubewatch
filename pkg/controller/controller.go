@@ -96,7 +96,7 @@ type Controller struct {
 }
 
 type CiConfig struct {
-	DefaultNamespace string `env:"DEFAULT_NAMESPACE" envDefault:"devtron-ci"`
+	DefaultNamespace string `env:"CD_EXTERNAL_NAMESPACE" envDefault:""`
 	CiInformer       bool   `env:"CI_INFORMER" envDefault:"true"`
 }
 
