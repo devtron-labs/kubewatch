@@ -275,8 +275,8 @@ func (impl *K8sInformerImpl) startSystemWorkflowInformer(clusterId int) error {
 	})
 	informerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(clusterClient, 15*time.Minute, labelOptions)
 	stopper := make(chan struct{})
-	jobsInformer := informerFactory.Core().V1().Pods()
-	jobsInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	podInformer := informerFactory.Core().V1().Pods()
+	podInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		UpdateFunc: func(oldObj, newObj interface{}) {
 			if podObj, ok := newObj.(*coreV1.Pod); ok {
 				impl.logger.Debugw("Event received in Pods update informer", "time", time.Now(), "podObjStatus", podObj.Status)
@@ -500,7 +500,11 @@ func (impl *K8sInformerImpl) inferFailedReason(pod *coreV1.Pod) (v1alpha1.NodePh
 
 func (impl *K8sInformerImpl) getWorkflowStatus(podObj *coreV1.Pod, nodeStatus v1alpha1.NodeStatus) *v1alpha1.WorkflowStatus {
 	workflowStatus := &v1alpha1.WorkflowStatus{}
-	workflowStatus.Phase = v1alpha1.WorkflowPhase(nodeStatus.Phase)
+	workflowPhase := v1alpha1.WorkflowPhase(nodeStatus.Phase)
+	if workflowPhase == v1alpha1.WorkflowPending {
+		workflowPhase = v1alpha1.WorkflowRunning
+	}
+	workflowStatus.Phase = workflowPhase
 	nodeNameVsStatus := make(map[string]v1alpha1.NodeStatus,1)
 	nodeStatus.ID = podObj.Name
 	nodeStatus.TemplateName = "cd"
