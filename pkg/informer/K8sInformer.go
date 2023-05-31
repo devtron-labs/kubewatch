@@ -505,6 +505,9 @@ func (impl *K8sInformerImpl) getWorkflowStatus(podObj *coreV1.Pod, nodeStatus v1
 	if workflowPhase == v1alpha1.WorkflowPending {
 		workflowPhase = v1alpha1.WorkflowRunning
 	}
+	if workflowPhase.Completed() {
+		workflowStatus.FinishedAt = nodeStatus.FinishedAt
+	}
 	workflowStatus.Phase = workflowPhase
 	nodeNameVsStatus := make(map[string]v1alpha1.NodeStatus,1)
 	nodeStatus.ID = podObj.Name
