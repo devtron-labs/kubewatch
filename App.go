@@ -21,7 +21,7 @@ func NewApp(MuxRouter *api.RouterImpl, Logger *zap.SugaredLogger) *App {
 	}
 }
 func (app *App) Start() {
-	port := 8181 //TODO: extract from environment variable
+	port := 8080 //TODO: extract from environment variable
 	app.Logger.Infow("starting server on ", "port", port)
 	app.MuxRouter.Init()
 	server := &http.Server{Addr: fmt.Sprintf(":%d", port), Handler: app.MuxRouter.Router}
