@@ -8,7 +8,7 @@ WORKDIR /go/src/github.com/devtron-labs/kubewatch
 ADD . /go/src/github.com/devtron-labs/kubewatch/
 RUN GOOS=linux make
 
-FROM alpine:3.9
+FROM alpine:3.18
 
 RUN apk add --update ca-certificates
 
