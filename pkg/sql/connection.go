@@ -37,6 +37,7 @@ type Config struct {
 	LogAllQuery            bool   `env:"PG_LOG_ALL_QUERY" envDefault:"false"`
 	ExportPromMetrics      bool   `env:"PG_EXPORT_PROM_METRICS" envDefault:"false"`
 	QueryDurationThreshold int64  `env:"PG_QUERY_DUR_THRESHOLD" envDefault:"5000"`
+	ClusterType            string `env:"CLUSTER_TYPE" envDefault:""`
 }
 
 func GetConfig() (*Config, error) {

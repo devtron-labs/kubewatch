@@ -204,9 +204,10 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 		}
 
 		if cdCfg.CdInformer {
-
-			startSystemWorkflowInformer(logger)
-
+			config, _ := sql.GetConfig()
+			if config.ClusterType == "ALL_CLUSTER" {
+				startSystemWorkflowInformer(logger)
+			}
 			//informer := util.NewWorkflowInformer(cfg, cdCfg.DefaultNamespace, 0, nil)
 			cdWorkflowInformer := util2.NewWorkflowInformer(dynamicClient, cdCfg.DefaultNamespace, 0, nil, cache.Indexers{})
 			cdWorkflowInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -339,7 +340,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 						logger.Errorw("error occurred while marshalling workflow", "err", err)
 						return
 					}
-					logger.Debugw("sending external cd workflow update event ","workflow", string(wfJson))
+					logger.Debugw("sending external cd workflow update event ", "workflow", string(wfJson))
 					var reqBody = []byte(wfJson)
 
 					err = PublishEventsOnRest(reqBody, pubsub.CD_WORKFLOW_STATUS_UPDATE, externalCD)
@@ -406,7 +407,7 @@ func PublishEventsOnRest(jsonBody []byte, topic string, externalCdConfig *Extern
 
 type ApplicationDetail struct {
 	Application *v1alpha1.Application `json:"application"`
-	StatusTime  time.Time              `json:"statusTime"`
+	StatusTime  time.Time             `json:"statusTime"`
 }
 
 func SendAppUpdate(app *v1alpha1.Application, client *pubsub.PubSubClientServiceImpl, statusTime time.Time) {
