@@ -122,6 +122,10 @@ type AcdConfig struct {
 	ACDInformer  bool   `env:"ACD_INFORMER" envDefault:"true"`
 }
 
+type ClusterConfig struct {
+	ClusterType string `env:"CLUSTER_TYPE" envDefault:"IN_CLUSTER"`
+}
+
 type EventType int
 
 const Trigger EventType = 1
@@ -129,6 +133,8 @@ const Success EventType = 2
 const Fail EventType = 3
 
 const cronMinuteWiseEventName string = "minute-event"
+
+const CLUSTER_TYPE_ALL string = "ALL_CLUSTER"
 
 var client *pubsub.PubSubClientServiceImpl
 
@@ -204,8 +210,9 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 		}
 
 		if cdCfg.CdInformer {
-			config, _ := sql.GetConfig()
-			if config.ClusterType == "ALL_CLUSTER" {
+			clusterCfg := &ClusterConfig{}
+			err = env.Parse(clusterCfg)
+			if clusterCfg.ClusterType == CLUSTER_TYPE_ALL {
 				startSystemWorkflowInformer(logger)
 			}
 			//informer := util.NewWorkflowInformer(cfg, cdCfg.DefaultNamespace, 0, nil)
