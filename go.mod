@@ -5,9 +5,11 @@ go 1.18
 require (
 	github.com/argoproj/argo-cd/v2 v2.7.2
 	github.com/argoproj/argo-workflows/v3 v3.4.7
+	github.com/argoproj/gitops-engine v0.7.1-0.20230214165351-ed70eac8b7bd
 	github.com/caarlos0/env v3.5.0+incompatible
 	github.com/go-pg/pg v6.15.1+incompatible
 	github.com/go-resty/resty/v2 v2.7.0
+	github.com/gorilla/mux v1.8.0
 	github.com/nlopes/slack v0.1.0
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/cobra v1.6.1
@@ -54,7 +56,6 @@ require (
 	github.com/ProtonMail/go-crypto v0.0.0-20230217124315-7d5c6f04bbb8 // indirect
 	github.com/acomagu/bufpipe v1.0.4 // indirect
 	github.com/antonmedv/expr v1.12.5 // indirect
-	github.com/argoproj/gitops-engine v0.7.1-0.20230214165351-ed70eac8b7bd // indirect
 	github.com/argoproj/pkg v0.13.7-0.20221221191914-44694015343d // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bombsimon/logrusr/v2 v2.0.1 // indirect
