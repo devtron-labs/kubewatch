@@ -5,13 +5,13 @@ package main
 
 import (
 	api "github.com/devtron-labs/kubewatch/api/router"
-	"github.com/devtron-labs/kubewatch/pkg/logger"
+	"github.com/devtron-labs/kubewatch/internal/logger"
 	"github.com/google/wire"
 )
 
 func InitializeApp() (*App, error) {
 	wire.Build(
-		logger.NewSugaredLogger,
+		logger.NewSugardLogger,
 		NewApp,
 		api.NewRouter,
 	)

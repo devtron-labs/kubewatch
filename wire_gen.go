@@ -8,13 +8,16 @@ package main
 
 import (
 	"github.com/devtron-labs/kubewatch/api/router"
-	"github.com/devtron-labs/kubewatch/pkg/logger"
+	"github.com/devtron-labs/kubewatch/internal/logger"
 )
 
 // Injectors from Wire.go:
 
 func InitializeApp() (*App, error) {
-	sugaredLogger := logger.NewSugaredLogger()
+	sugaredLogger, err := logger.NewSugardLogger()
+	if err != nil {
+		return nil, err
+	}
 	routerImpl := api.NewRouter(sugaredLogger)
 	app := NewApp(routerImpl, sugaredLogger)
 	return app, nil
