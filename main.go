@@ -26,6 +26,6 @@ func main() {
 	if err != nil {
 		log.Panic(err)
 	}
-	app.Start()
+	go app.Start()
 	cmd.Execute()
 }
