@@ -344,25 +344,25 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 					//logger.Debugw("workflow created")
 				},
 				UpdateFunc: func(oldObj, newWf interface{}) {
-					logger.Info("workflow update detected")
+					logger.Info("external workflow update detected")
 					if workflow, ok := newWf.(*unstructured.Unstructured).Object["status"]; ok {
 						wfJson, err := json.Marshal(workflow)
 						if err != nil {
 							logger.Errorw("error occurred while marshalling workflow", "err", err)
 							return
 						}
-						logger.Debugw("sending workflow update event ", "wfJson", string(wfJson))
+						logger.Debugw("sending external workflow update event ", "wfJson", string(wfJson))
 						var reqBody = []byte(wfJson)
 						if client == nil {
 							logger.Warn("don't publish")
 							return
 						}
-						err = PublishEventsOnRest(reqBody, pubsub.CD_WORKFLOW_STATUS_UPDATE, externalCD)
+						err = PublishEventsOnRest(reqBody, pubsub.WORKFLOW_STATUS_UPDATE_TOPIC, externalCD)
 						if err != nil {
 							logger.Errorw("publish cd err", "err", err)
 							return
 						}
-						logger.Debug("external cd workflow update sent")
+						logger.Debug("external ci workflow update sent")
 					}
 				},
 			})
