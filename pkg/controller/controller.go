@@ -353,10 +353,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 						}
 						logger.Debugw("sending external workflow update event ", "wfJson", string(wfJson))
 						var reqBody = []byte(wfJson)
-						if client == nil {
-							logger.Warn("don't publish")
-							return
-						}
+
 						err = PublishEventsOnRest(reqBody, pubsub.WORKFLOW_STATUS_UPDATE_TOPIC, externalCD)
 						if err != nil {
 							logger.Errorw("publish cd err", "err", err)
