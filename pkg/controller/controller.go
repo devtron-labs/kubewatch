@@ -329,42 +329,92 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 	///------------
 
 	if externalCD.External {
-		logger.Info("applying listner for external")
+		logger.Info("applying listener for external")
 		//informer := util.NewWorkflowInformer(cfg, externalCD.Namespace, 0, nil)
-		informer := util2.NewWorkflowInformer(dynamicClient, externalCD.Namespace, 0, nil, cache.Indexers{})
-		informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-			// When a new wf gets created
-			AddFunc: func(obj interface{}) {
-				logger.Debug("external cd workflow created")
-			},
-			// When a wf gets updated
-			UpdateFunc: func(oldWf interface{}, newWf interface{}) {
-				//TODO apply filter for devtron
-				logger.Info("external wf event received")
-				if workflow, ok := newWf.(*unstructured.Unstructured).Object["status"]; ok {
-					wfJson, err := json.Marshal(workflow)
-					if err != nil {
-						logger.Errorw("error occurred while marshalling workflow", "err", err)
-						return
-					}
-					logger.Debugw("sending external cd workflow update event ", "workflow", string(wfJson))
-					var reqBody = []byte(wfJson)
+		ciCfg := &CiConfig{}
+		err = env.Parse(ciCfg)
+		if err != nil {
+			logger.Fatal("error occurred while parsing ci config", err)
+		}
 
-					err = PublishEventsOnRest(reqBody, pubsub.CD_WORKFLOW_STATUS_UPDATE, externalCD)
-					if err != nil {
-						logger.Errorw("publish cd err", "err", err)
-						return
+		if ciCfg.CiInformer {
+			workflowInformer := util2.NewWorkflowInformer(dynamicClient, externalCD.Namespace, 0, nil, cache.Indexers{})
+			workflowInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+				AddFunc: func(obj interface{}) {
+					//logger.Debugw("workflow created")
+				},
+				UpdateFunc: func(oldObj, newWf interface{}) {
+					logger.Info("workflow update detected")
+					if workflow, ok := newWf.(*unstructured.Unstructured).Object["status"]; ok {
+						wfJson, err := json.Marshal(workflow)
+						if err != nil {
+							logger.Errorw("error occurred while marshalling workflow", "err", err)
+							return
+						}
+						logger.Debugw("sending workflow update event ", "wfJson", string(wfJson))
+						var reqBody = []byte(wfJson)
+						if client == nil {
+							logger.Warn("don't publish")
+							return
+						}
+						err = PublishEventsOnRest(reqBody, pubsub.CD_WORKFLOW_STATUS_UPDATE, externalCD)
+						if err != nil {
+							logger.Errorw("publish cd err", "err", err)
+							return
+						}
+						logger.Debug("external cd workflow update sent")
 					}
-					logger.Debug("external cd workflow update sent")
-				}
-			},
-			// When a wf gets deleted
-			DeleteFunc: func(wf interface{}) {},
-		})
+				},
+			})
+			stopCh := make(chan struct{})
+			defer close(stopCh)
+			go workflowInformer.Run(stopCh)
+		}
 
-		stopCh := make(chan struct{})
-		defer close(stopCh)
-		go informer.Run(stopCh)
+		///-------------------
+		cdCfg := &CdConfig{}
+		err = env.Parse(cdCfg)
+		if err != nil {
+			logger.Fatal("err %s", err)
+		}
+
+		if cdCfg.CdInformer {
+
+			informer := util2.NewWorkflowInformer(dynamicClient, externalCD.Namespace, 0, nil, cache.Indexers{})
+			informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+				// When a new wf gets created
+				AddFunc: func(obj interface{}) {
+					logger.Debug("external cd workflow created")
+				},
+				// When a wf gets updated
+				UpdateFunc: func(oldWf interface{}, newWf interface{}) {
+					//TODO apply filter for devtron
+					logger.Info("external wf event received")
+					if workflow, ok := newWf.(*unstructured.Unstructured).Object["status"]; ok {
+						wfJson, err := json.Marshal(workflow)
+						if err != nil {
+							logger.Errorw("error occurred while marshalling workflow", "err", err)
+							return
+						}
+						logger.Debugw("sending external cd workflow update event ", "workflow", string(wfJson))
+						var reqBody = []byte(wfJson)
+
+						err = PublishEventsOnRest(reqBody, pubsub.CD_WORKFLOW_STATUS_UPDATE, externalCD)
+						if err != nil {
+							logger.Errorw("publish cd err", "err", err)
+							return
+						}
+						logger.Debug("external cd workflow update sent")
+					}
+				},
+				// When a wf gets deleted
+				DeleteFunc: func(wf interface{}) {},
+			})
+
+			stopCh := make(chan struct{})
+			defer close(stopCh)
+			go informer.Run(stopCh)
+		}
 	}
 
 	sigterm := make(chan os.Signal, 1)
