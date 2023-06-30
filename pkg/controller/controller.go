@@ -156,7 +156,9 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 	if err != nil {
 		logger.Fatal("error occurred while parsing external cd config", err)
 	}
-	client = pubsub.NewPubSubClientServiceImpl(logger)
+	if !externalCD.External {
+		client = pubsub.NewPubSubClientServiceImpl(logger)
+	}
 
 	ciCfg := &CiConfig{}
 	err = env.Parse(ciCfg)
