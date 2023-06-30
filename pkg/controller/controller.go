@@ -186,7 +186,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 		if externalCD.External {
 			namespace = externalCD.Namespace
 		} else {
-			namespace = ciCfg.DefaultNamespace
+			namespace = cdCfg.DefaultNamespace
 		}
 		clusterCfg := &ClusterConfig{}
 		err = env.Parse(clusterCfg)
