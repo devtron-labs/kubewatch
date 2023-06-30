@@ -165,7 +165,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 	}
 
 	if ciCfg.CiInformer {
-		startWorkflowInformer(dynamicClient, ciCfg.DefaultNamespace, logger, pubsub.WORKFLOW_STATUS_UPDATE_TOPIC, externalCD.External, externalCD)
+		startWorkflowInformer(dynamicClient, ciCfg.DefaultNamespace, logger, pubsub.WORKFLOW_STATUS_UPDATE_TOPIC, externalCD.External, externalCD, client)
 	}
 
 	///-------------------
@@ -181,7 +181,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 		if clusterCfg.ClusterType == ClusterTypeAll && !externalCD.External {
 			startSystemWorkflowInformer(logger)
 		}
-		startWorkflowInformer(dynamicClient, cdCfg.DefaultNamespace, logger, pubsub.CD_WORKFLOW_STATUS_UPDATE, externalCD.External, externalCD)
+		startWorkflowInformer(dynamicClient, cdCfg.DefaultNamespace, logger, pubsub.CD_WORKFLOW_STATUS_UPDATE, externalCD.External, externalCD, client)
 	}
 
 	acdCfg := &AcdConfig{}
@@ -260,7 +260,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 	<-sigterm
 }
 
-func startWorkflowInformer(dynamicClient dynamic.Interface, namespace string, logger *zap.SugaredLogger, eventName string, isExternal bool, externalCD *ExternalCdConfig) {
+func startWorkflowInformer(dynamicClient dynamic.Interface, namespace string, logger *zap.SugaredLogger, eventName string, isExternal bool, externalCD *ExternalCdConfig, client *pubsub.PubSubClientServiceImpl) {
 	workflowInformer := util2.NewWorkflowInformer(dynamicClient, namespace, 0, nil, cache.Indexers{})
 	workflowInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {},
