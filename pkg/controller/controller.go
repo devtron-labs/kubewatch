@@ -141,18 +141,8 @@ var client *pubsub.PubSubClientServiceImpl
 func Start(conf *config.Config, eventHandler handlers.Handler) {
 	logger := logger.NewSugaredLogger()
 	cfg, _ := utils.GetDefaultK8sConfig("kubeconfig")
-	httpClient, err := rest.HTTPClientFor(cfg)
-	if err != nil {
-		return
-	}
-	dynamicClient, err := dynamic.NewForConfigAndClient(cfg, httpClient)
-	if err != nil {
-		logger.Errorw("error in getting dynamic interface for resource", "err", err)
-		return
-	}
-
 	externalCD := &ExternalCdConfig{}
-	err = env.Parse(externalCD)
+	err := env.Parse(externalCD)
 	if err != nil {
 		logger.Fatal("error occurred while parsing external cd config", err)
 	}
@@ -172,7 +162,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 		} else {
 			namespace = ciCfg.DefaultNamespace
 		}
-		startWorkflowInformer(dynamicClient, namespace, logger, pubsub.WORKFLOW_STATUS_UPDATE_TOPIC, externalCD.External, externalCD, client)
+		startWorkflowInformer(namespace, logger, pubsub.WORKFLOW_STATUS_UPDATE_TOPIC)
 	}
 
 	///-------------------
@@ -193,7 +183,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 		if clusterCfg.ClusterType == ClusterTypeAll && !externalCD.External {
 			startSystemWorkflowInformer(logger)
 		}
-		startWorkflowInformer(dynamicClient, namespace, logger, pubsub.CD_WORKFLOW_STATUS_UPDATE, externalCD.External, externalCD, client)
+		startWorkflowInformer(namespace, logger, pubsub.CD_WORKFLOW_STATUS_UPDATE)
 	}
 
 	acdCfg := &AcdConfig{}
@@ -272,7 +262,22 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 	<-sigterm
 }
 
-func startWorkflowInformer(dynamicClient dynamic.Interface, namespace string, logger *zap.SugaredLogger, eventName string, isExternal bool, externalCD *ExternalCdConfig, client *pubsub.PubSubClientServiceImpl) {
+func startWorkflowInformer(namespace string, logger *zap.SugaredLogger, eventName string) {
+	externalCD := &ExternalCdConfig{}
+	err := env.Parse(externalCD)
+	if err != nil {
+		logger.Fatal("error occurred while parsing external cd config", err)
+	}
+	cfg, _ := utils.GetDefaultK8sConfig("kubeconfig")
+	httpClient, err := rest.HTTPClientFor(cfg)
+	if err != nil {
+		return
+	}
+	dynamicClient, err := dynamic.NewForConfigAndClient(cfg, httpClient)
+	if err != nil {
+		logger.Errorw("error in getting dynamic interface for resource", "err", err)
+		return
+	}
 	workflowInformer := util2.NewWorkflowInformer(dynamicClient, namespace, 0, nil, cache.Indexers{})
 	workflowInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {},
@@ -286,7 +291,7 @@ func startWorkflowInformer(dynamicClient dynamic.Interface, namespace string, lo
 				}
 				logger.Debugw("sending workflow update event ", "wfJson", string(wfJson))
 				var reqBody = []byte(wfJson)
-				if isExternal {
+				if externalCD.External {
 					err = PublishEventsOnRest(reqBody, eventName, externalCD)
 				} else {
 					if client == nil {
