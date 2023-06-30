@@ -10,7 +10,7 @@ import (
 	apps_v1 "k8s.io/api/apps/v1"
 	batch_v1 "k8s.io/api/batch/v1"
 	api_v1 "k8s.io/api/core/v1"
-        ext_v1beta1 "k8s.io/api/extensions/v1beta1"
+	ext_v1beta1 "k8s.io/api/extensions/v1beta1"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -61,9 +61,9 @@ func GetDefaultK8sConfig(configName string) (*rest.Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	kubeconfig := flag.String(configName, filepath.Join(usr.HomeDir, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
+	kubeConfig := flag.String(configName, filepath.Join(usr.HomeDir, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
 	flag.Parse()
-	cfg, err = clientcmd.BuildConfigFromFlags("", *kubeconfig)
+	cfg, err = clientcmd.BuildConfigFromFlags("", *kubeConfig)
 	if err != nil {
 		return nil, err
 	}
