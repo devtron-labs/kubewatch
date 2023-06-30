@@ -156,13 +156,16 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 		logger.Fatal("error occurred while parsing ci config", err)
 	}
 	var namespace string
+	logger.Infow("CiConfig", ciCfg)
 	if ciCfg.CiInformer {
 		if externalCD.External {
 			namespace = externalCD.Namespace
 		} else {
 			namespace = ciCfg.DefaultNamespace
 		}
+		logger.Infow("namespace", namespace)
 		startWorkflowInformer(namespace, logger, pubsub.WORKFLOW_STATUS_UPDATE_TOPIC)
+		logger.Infow("Started Ci")
 	}
 
 	///-------------------
@@ -171,19 +174,21 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 	if err != nil {
 		logger.Fatal("err %s", err)
 	}
-
+	logger.Infow("CdConfig", cdCfg)
 	if cdCfg.CdInformer {
 		if externalCD.External {
 			namespace = externalCD.Namespace
 		} else {
 			namespace = cdCfg.DefaultNamespace
 		}
+		logger.Infow("namespace", namespace)
 		clusterCfg := &ClusterConfig{}
 		err = env.Parse(clusterCfg)
 		if clusterCfg.ClusterType == ClusterTypeAll && !externalCD.External {
 			startSystemWorkflowInformer(logger)
 		}
 		startWorkflowInformer(namespace, logger, pubsub.CD_WORKFLOW_STATUS_UPDATE)
+		logger.Infow("Started Cd")
 	}
 
 	acdCfg := &AcdConfig{}
@@ -312,6 +317,7 @@ func startWorkflowInformer(namespace string, logger *zap.SugaredLogger, eventNam
 	stopCh := make(chan struct{})
 	defer close(stopCh)
 	go workflowInformer.Run(stopCh)
+	return
 }
 
 func startSystemWorkflowInformer(logger *zap.SugaredLogger) error {
