@@ -268,6 +268,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 }
 
 func startWorkflowInformer(namespace string, logger *zap.SugaredLogger, eventName string) {
+	logger.Infow("startWorkflowInformer")
 	externalCD := &ExternalCdConfig{}
 	err := env.Parse(externalCD)
 	if err != nil {
@@ -285,7 +286,9 @@ func startWorkflowInformer(namespace string, logger *zap.SugaredLogger, eventNam
 	}
 	workflowInformer := util2.NewWorkflowInformer(dynamicClient, namespace, 0, nil, cache.Indexers{})
 	workflowInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {},
+		AddFunc: func(obj interface{}) {
+			logger.Infow("AddFunc")
+		},
 		UpdateFunc: func(oldWf, newWf interface{}) {
 			logger.Info("workflow update detected")
 			if workflow, ok := newWf.(*unstructured.Unstructured).Object["status"]; ok {
