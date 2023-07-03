@@ -146,9 +146,6 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 	if err != nil {
 		logger.Fatal("error occurred while parsing external cd config", err)
 	}
-	if !externalCD.External {
-		client = pubsub.NewPubSubClientServiceImpl(logger)
-	}
 
 	ciCfg := &CiConfig{}
 	err = env.Parse(ciCfg)
@@ -275,6 +272,7 @@ func startWorkflowInformer(namespace string, logger *zap.SugaredLogger, eventNam
 	cfg, err := utils.GetDefaultK8sConfig("kubeConfig")
 	if err != nil {
 		logger.Error("error occurred while getting k8sConfig", cfg)
+		return
 	}
 	httpClient, err := rest.HTTPClientFor(cfg)
 	if err != nil {
@@ -304,6 +302,7 @@ func startWorkflowInformer(namespace string, logger *zap.SugaredLogger, eventNam
 				if externalCD.External {
 					err = PublishEventsOnRest(reqBody, eventName, externalCD)
 				} else {
+					client = pubsub.NewPubSubClientServiceImpl(logger)
 					if client == nil {
 						logger.Warn("don't publish")
 						return
