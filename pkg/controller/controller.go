@@ -161,7 +161,8 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 			namespace = ciCfg.DefaultNamespace
 		}
 		logger.Infow("namespace", "namespace", namespace)
-		startWorkflowInformer(namespace, logger, pubsub.WORKFLOW_STATUS_UPDATE_TOPIC)
+		stopCh := startWorkflowInformer(namespace, logger, pubsub.WORKFLOW_STATUS_UPDATE_TOPIC)
+		defer close(stopCh)
 	}
 
 	///-------------------
@@ -183,7 +184,8 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 		if clusterCfg.ClusterType == ClusterTypeAll && !externalCD.External {
 			startSystemWorkflowInformer(logger)
 		}
-		startWorkflowInformer(namespace, logger, pubsub.CD_WORKFLOW_STATUS_UPDATE)
+		stopCh := startWorkflowInformer(namespace, logger, pubsub.CD_WORKFLOW_STATUS_UPDATE)
+		defer close(stopCh)
 		logger.Info("Started Cd")
 	}
 
@@ -263,7 +265,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 	<-sigterm
 }
 
-func startWorkflowInformer(namespace string, logger *zap.SugaredLogger, eventName string) {
+func startWorkflowInformer(namespace string, logger *zap.SugaredLogger, eventName string) chan struct{} {
 	externalCD := &ExternalCdConfig{}
 	err := env.Parse(externalCD)
 	if err != nil {
@@ -272,16 +274,16 @@ func startWorkflowInformer(namespace string, logger *zap.SugaredLogger, eventNam
 	cfg, err := utils.GetDefaultK8sConfig("kubeConfig")
 	if err != nil {
 		logger.Error("error occurred while getting k8sConfig", cfg)
-		return
+		return nil
 	}
 	httpClient, err := rest.HTTPClientFor(cfg)
 	if err != nil {
-		return
+		return nil
 	}
 	dynamicClient, err := dynamic.NewForConfigAndClient(cfg, httpClient)
 	if err != nil {
 		logger.Errorw("error in getting dynamic interface for resource", "err", err)
-		return
+		return nil
 	}
 	workflowInformer := util2.NewWorkflowInformer(dynamicClient, namespace, 0, nil, cache.Indexers{})
 	logger.Debugw("NewWorkflowInformer", "workflowInformer", workflowInformer)
@@ -319,8 +321,9 @@ func startWorkflowInformer(namespace string, logger *zap.SugaredLogger, eventNam
 		DeleteFunc: func(wf interface{}) {},
 	})
 	stopCh := make(chan struct{})
-	defer close(stopCh)
 	go workflowInformer.Run(stopCh)
+	return stopCh
+
 }
 
 func startSystemWorkflowInformer(logger *zap.SugaredLogger) error {
