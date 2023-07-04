@@ -153,15 +153,14 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 		logger.Fatal("error occurred while parsing ci config", err)
 	}
 	var namespace string
-	logger.Infow("CiConfig", "ciCfg", ciCfg)
 	if ciCfg.CiInformer {
 		if externalCD.External {
 			namespace = externalCD.Namespace
 		} else {
 			namespace = ciCfg.DefaultNamespace
 		}
-		logger.Infow("namespace", "namespace", namespace)
-		stopCh := startWorkflowInformer(namespace, logger, pubsub.WORKFLOW_STATUS_UPDATE_TOPIC)
+		stopCh := make(chan struct{})
+		startWorkflowInformer(namespace, logger, pubsub.WORKFLOW_STATUS_UPDATE_TOPIC, stopCh)
 		defer close(stopCh)
 	}
 
@@ -171,22 +170,20 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 	if err != nil {
 		logger.Fatal("err %s", err)
 	}
-	logger.Infow("CdConfig", "cdCfg", cdCfg)
 	if cdCfg.CdInformer {
 		if externalCD.External {
 			namespace = externalCD.Namespace
 		} else {
 			namespace = cdCfg.DefaultNamespace
 		}
-		logger.Infow("namespace", "namespace", namespace)
 		clusterCfg := &ClusterConfig{}
 		err = env.Parse(clusterCfg)
 		if clusterCfg.ClusterType == ClusterTypeAll && !externalCD.External {
 			startSystemWorkflowInformer(logger)
 		}
-		stopCh := startWorkflowInformer(namespace, logger, pubsub.CD_WORKFLOW_STATUS_UPDATE)
+		stopCh := make(chan struct{})
+		startWorkflowInformer(namespace, logger, pubsub.CD_WORKFLOW_STATUS_UPDATE, stopCh)
 		defer close(stopCh)
-		logger.Info("Started Cd")
 	}
 
 	acdCfg := &AcdConfig{}
@@ -265,7 +262,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 	<-sigterm
 }
 
-func startWorkflowInformer(namespace string, logger *zap.SugaredLogger, eventName string) chan struct{} {
+func startWorkflowInformer(namespace string, logger *zap.SugaredLogger, eventName string, stopCh chan struct{}) {
 	externalCD := &ExternalCdConfig{}
 	err := env.Parse(externalCD)
 	if err != nil {
@@ -274,23 +271,22 @@ func startWorkflowInformer(namespace string, logger *zap.SugaredLogger, eventNam
 	cfg, err := utils.GetDefaultK8sConfig("kubeConfig")
 	if err != nil {
 		logger.Error("error occurred while getting k8sConfig", cfg)
-		return nil
+		return
 	}
 	httpClient, err := rest.HTTPClientFor(cfg)
 	if err != nil {
-		return nil
+		logger.Error("error occurred in rest HTTPClientFor", err)
+		return
 	}
 	dynamicClient, err := dynamic.NewForConfigAndClient(cfg, httpClient)
 	if err != nil {
 		logger.Errorw("error in getting dynamic interface for resource", "err", err)
-		return nil
+		return
 	}
 	workflowInformer := util2.NewWorkflowInformer(dynamicClient, namespace, 0, nil, cache.Indexers{})
 	logger.Debugw("NewWorkflowInformer", "workflowInformer", workflowInformer)
 	workflowInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {
-			logger.Info("AddFunc")
-		},
+		AddFunc: func(obj interface{}) {},
 		UpdateFunc: func(oldWf, newWf interface{}) {
 			logger.Info("workflow update detected")
 			if workflow, ok := newWf.(*unstructured.Unstructured).Object["status"]; ok {
@@ -320,9 +316,8 @@ func startWorkflowInformer(namespace string, logger *zap.SugaredLogger, eventNam
 		},
 		DeleteFunc: func(wf interface{}) {},
 	})
-	stopCh := make(chan struct{})
+
 	go workflowInformer.Run(stopCh)
-	return stopCh
 
 }
 
