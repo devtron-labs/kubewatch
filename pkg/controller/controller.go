@@ -146,7 +146,16 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 	if err != nil {
 		logger.Fatal("error occurred while parsing external cd config", err)
 	}
-
+	httpClient, err := rest.HTTPClientFor(cfg)
+	if err != nil {
+		logger.Error("error occurred in rest HTTPClientFor", err)
+		return
+	}
+	dynamicClient, err := dynamic.NewForConfigAndClient(cfg, httpClient)
+	if err != nil {
+		logger.Errorw("error in getting dynamic interface for resource", "err", err)
+		return
+	}
 	ciCfg := &CiConfig{}
 	err = env.Parse(ciCfg)
 	if err != nil {
@@ -160,7 +169,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 			namespace = ciCfg.DefaultNamespace
 		}
 		stopCh := make(chan struct{})
-		startWorkflowInformer(namespace, logger, pubsub.WORKFLOW_STATUS_UPDATE_TOPIC, stopCh)
+		startWorkflowInformer(namespace, logger, pubsub.WORKFLOW_STATUS_UPDATE_TOPIC, stopCh, dynamicClient, externalCD)
 		defer close(stopCh)
 	}
 
@@ -182,7 +191,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 			startSystemWorkflowInformer(logger)
 		}
 		stopCh := make(chan struct{})
-		startWorkflowInformer(namespace, logger, pubsub.CD_WORKFLOW_STATUS_UPDATE, stopCh)
+		startWorkflowInformer(namespace, logger, pubsub.CD_WORKFLOW_STATUS_UPDATE, stopCh, dynamicClient, externalCD)
 		defer close(stopCh)
 	}
 
@@ -262,27 +271,8 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 	<-sigterm
 }
 
-func startWorkflowInformer(namespace string, logger *zap.SugaredLogger, eventName string, stopCh chan struct{}) {
-	externalCD := &ExternalCdConfig{}
-	err := env.Parse(externalCD)
-	if err != nil {
-		logger.Fatal("error occurred while parsing external cd config", err)
-	}
-	cfg, err := utils.GetDefaultK8sConfig("kubeConfig")
-	if err != nil {
-		logger.Error("error occurred while getting k8sConfig", cfg)
-		return
-	}
-	httpClient, err := rest.HTTPClientFor(cfg)
-	if err != nil {
-		logger.Error("error occurred in rest HTTPClientFor", err)
-		return
-	}
-	dynamicClient, err := dynamic.NewForConfigAndClient(cfg, httpClient)
-	if err != nil {
-		logger.Errorw("error in getting dynamic interface for resource", "err", err)
-		return
-	}
+func startWorkflowInformer(namespace string, logger *zap.SugaredLogger, eventName string, stopCh chan struct{}, dynamicClient dynamic.Interface, externalCD *ExternalCdConfig) {
+
 	workflowInformer := util2.NewWorkflowInformer(dynamicClient, namespace, 0, nil, cache.Indexers{})
 	logger.Debugw("NewWorkflowInformer", "workflowInformer", workflowInformer)
 	workflowInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
