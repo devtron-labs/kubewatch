@@ -169,15 +169,15 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 			namespace = ciCfg.DefaultNamespace
 		}
 		stopCh := make(chan struct{})
-		startWorkflowInformer(namespace, logger, pubsub.WORKFLOW_STATUS_UPDATE_TOPIC, stopCh, dynamicClient, externalCD)
 		defer close(stopCh)
+		startWorkflowInformer(namespace, logger, pubsub.WORKFLOW_STATUS_UPDATE_TOPIC, stopCh, dynamicClient, externalCD)
 	}
 
 	///-------------------
 	cdCfg := &CdConfig{}
 	err = env.Parse(cdCfg)
 	if err != nil {
-		logger.Fatal("err %s", err)
+		logger.Fatal("error occurred while parsing cd config", err)
 	}
 	if cdCfg.CdInformer {
 		if externalCD.External {
@@ -191,8 +191,8 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 			startSystemWorkflowInformer(logger)
 		}
 		stopCh := make(chan struct{})
-		startWorkflowInformer(namespace, logger, pubsub.CD_WORKFLOW_STATUS_UPDATE, stopCh, dynamicClient, externalCD)
 		defer close(stopCh)
+		startWorkflowInformer(namespace, logger, pubsub.CD_WORKFLOW_STATUS_UPDATE, stopCh, dynamicClient, externalCD)
 	}
 
 	acdCfg := &AcdConfig{}
