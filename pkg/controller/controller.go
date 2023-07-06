@@ -275,6 +275,7 @@ func startWorkflowInformer(namespace string, logger *zap.SugaredLogger, eventNam
 
 	workflowInformer := util2.NewWorkflowInformer(dynamicClient, namespace, 0, nil, cache.Indexers{})
 	logger.Debugw("NewWorkflowInformer", "workflowInformer", workflowInformer)
+	client = pubsub.NewPubSubClientServiceImpl(logger)
 	workflowInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {},
 		UpdateFunc: func(oldWf, newWf interface{}) {
@@ -290,7 +291,6 @@ func startWorkflowInformer(namespace string, logger *zap.SugaredLogger, eventNam
 				if externalCD.External {
 					err = PublishEventsOnRest(reqBody, eventName, externalCD)
 				} else {
-					client = pubsub.NewPubSubClientServiceImpl(logger)
 					if client == nil {
 						logger.Warn("don't publish")
 						return
