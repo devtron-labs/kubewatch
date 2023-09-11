@@ -1,6 +1,7 @@
 package informer
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	pubsub "github.com/devtron-labs/common-lib/pubsub-lib"
 	repository "github.com/devtron-labs/kubewatch/pkg/cluster"
 	"github.com/devtron-labs/kubewatch/pkg/utils"
+	errors1 "github.com/juju/errors"
 	"go.uber.org/zap"
 	coreV1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -38,6 +40,8 @@ const (
 	INFORMER_ALREADY_EXIST_MESSAGE   = "INFORMER_ALREADY_EXIST"
 	ADD                              = "add"
 	UPDATE                           = "update"
+	POD_DELETED_MESSAGE              = "pod deleted"
+	EXIST_CODE_143_ERROR             = "Error (exit code 143)"
 )
 
 type K8sInformer interface {
@@ -257,7 +261,7 @@ func (impl *K8sInformerImpl) startSystemWorkflowInformer(clusterId int) error {
 
 	clusterInfo, err := impl.clusterRepository.FindById(clusterId)
 	if err != nil {
-		impl.logger.Errorw("error in fetching cluster","clusterId",clusterId, "err", err)
+		impl.logger.Errorw("error in fetching cluster", "clusterId", clusterId, "err", err)
 		return err
 	}
 
@@ -282,6 +286,7 @@ func (impl *K8sInformerImpl) startSystemWorkflowInformer(clusterId int) error {
 			if podObj, ok := newObj.(*coreV1.Pod); ok {
 				impl.logger.Debugw("Event received in Pods update informer", "time", time.Now(), "podObjStatus", podObj.Status)
 				nodeStatus := impl.assessNodeStatus(podObj)
+				nodeStatus = impl.checkIfPodDeletedAndUpdateMessage(podObj.Name, podObj.Namespace, nodeStatus, clusterClient)
 				workflowStatus := impl.getWorkflowStatus(podObj, nodeStatus)
 				wfJson, err := json.Marshal(workflowStatus)
 				if err != nil {
@@ -307,6 +312,23 @@ func (impl *K8sInformerImpl) startSystemWorkflowInformer(clusterId int) error {
 	impl.logger.Infow("informer started for cluster", "clusterId", clusterInfo.Id, "clusterName", clusterInfo.ClusterName)
 	impl.informerStopper[clusterId] = stopper
 	return nil
+}
+
+func (impl *K8sInformerImpl) checkIfPodDeletedAndUpdateMessage(podName, namespace string, nodeStatus v1alpha1.NodeStatus, clusterClient *kubernetes.Clientset) v1alpha1.NodeStatus {
+	if nodeStatus.Phase == v1alpha1.NodeFailed && nodeStatus.Message == EXIST_CODE_143_ERROR {
+		pod, err := clusterClient.CoreV1().Pods(namespace).Get(context.Background(), podName, metav1.GetOptions{})
+		if err != nil {
+			impl.logger.Errorw("error in getting pod from clusterClient", "podName", podName, "namespace", namespace)
+			if errors1.IsNotFound(err) {
+				nodeStatus.Message = POD_DELETED_MESSAGE
+			}
+			return nodeStatus
+		}
+		if pod.DeletionTimestamp != nil {
+			nodeStatus.Message = POD_DELETED_MESSAGE
+		}
+	}
+	return nodeStatus
 }
 
 func (impl *K8sInformerImpl) getK8sClientForCluster(clusterInfo *repository.Cluster) (*kubernetes.Clientset, error) {
@@ -509,7 +531,7 @@ func (impl *K8sInformerImpl) getWorkflowStatus(podObj *coreV1.Pod, nodeStatus v1
 		workflowStatus.FinishedAt = nodeStatus.FinishedAt
 	}
 	workflowStatus.Phase = workflowPhase
-	nodeNameVsStatus := make(map[string]v1alpha1.NodeStatus,1)
+	nodeNameVsStatus := make(map[string]v1alpha1.NodeStatus, 1)
 	nodeStatus.ID = podObj.Name
 	nodeStatus.TemplateName = "cd"
 	nodeStatus.Name = nodeStatus.ID
