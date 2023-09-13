@@ -10,7 +10,6 @@ require (
 	github.com/go-pg/pg v6.15.1+incompatible
 	github.com/go-resty/resty/v2 v2.7.0
 	github.com/gorilla/mux v1.8.0
-	github.com/juju/errors v1.0.0
 	github.com/nlopes/slack v0.1.0
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/cobra v1.6.1

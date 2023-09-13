@@ -11,9 +11,9 @@ import (
 	pubsub "github.com/devtron-labs/common-lib/pubsub-lib"
 	repository "github.com/devtron-labs/kubewatch/pkg/cluster"
 	"github.com/devtron-labs/kubewatch/pkg/utils"
-	errors1 "github.com/juju/errors"
 	"go.uber.org/zap"
 	coreV1 "k8s.io/api/core/v1"
+	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
@@ -319,7 +319,7 @@ func (impl *K8sInformerImpl) checkIfPodDeletedAndUpdateMessage(podName, namespac
 		pod, err := clusterClient.CoreV1().Pods(namespace).Get(context.Background(), podName, metav1.GetOptions{})
 		if err != nil {
 			impl.logger.Errorw("error in getting pod from clusterClient", "podName", podName, "namespace", namespace)
-			if errors1.IsNotFound(err) {
+			if isResourceNotFoundErr(err) {
 				nodeStatus.Message = POD_DELETED_MESSAGE
 			}
 			return nodeStatus
@@ -549,4 +549,11 @@ func (impl *K8sInformerImpl) getPodOwnerName(podObj *coreV1.Pod) string {
 		}
 	}
 	return podObj.Name
+}
+
+func isResourceNotFoundErr(err error) bool {
+	if errStatus, ok := err.(*k8sErrors.StatusError); ok && errStatus.Status().Reason == metav1.StatusReasonNotFound {
+		return true
+	}
+	return false
 }
