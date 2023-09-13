@@ -22,4 +22,4 @@ RUN chmod +x ./kubewatch
 
 USER devtron
 
-ENTRYPOINT ["./kubewatch"]
+CMD ["./kubewatch"]
