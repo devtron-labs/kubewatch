@@ -306,8 +306,6 @@ func startWorkflowInformer(namespace string, logger *zap.SugaredLogger, eventNam
 				logger.Debug("workflow update sent")
 			}
 		},
-
-		//add the logic here
 		DeleteFunc: func(wf interface{}) {},
 	})
 
