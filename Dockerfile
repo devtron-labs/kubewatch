@@ -21,5 +21,5 @@ RUN chown devtron:devtron ./kubewatch
 RUN chmod +x ./kubewatch
 
 USER devtron
-RUN ls -l
-CMD ["./kubewatch"]
+
+ENTRYPOINT ["./kubewatch"]
