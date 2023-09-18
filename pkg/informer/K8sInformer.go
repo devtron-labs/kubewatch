@@ -318,7 +318,7 @@ func (impl *K8sInformerImpl) checkIfPodDeletedAndUpdateMessage(podName, namespac
 	if nodeStatus.Phase == v1alpha1.NodeFailed && nodeStatus.Message == EXIT_CODE_143_ERROR {
 		pod, err := clusterClient.CoreV1().Pods(namespace).Get(context.Background(), podName, metav1.GetOptions{})
 		if err != nil {
-			impl.logger.Errorw("error in getting pod from clusterClient", "podName", podName, "namespace", namespace)
+			impl.logger.Errorw("error in getting pod from clusterClient", "podName", podName, "namespace", namespace, "err", err)
 			if isResourceNotFoundErr(err) {
 				nodeStatus.Message = POD_DELETED_MESSAGE
 			}
