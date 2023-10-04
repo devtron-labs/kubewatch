@@ -315,7 +315,7 @@ func (impl *K8sInformerImpl) startSystemWorkflowInformer(clusterId int) error {
 }
 
 func (impl *K8sInformerImpl) checkIfPodDeletedAndUpdateMessage(podName, namespace string, nodeStatus v1alpha1.NodeStatus, clusterClient *kubernetes.Clientset) v1alpha1.NodeStatus {
-	if nodeStatus.Phase == v1alpha1.NodeFailed && nodeStatus.Message == EXIT_CODE_143_ERROR {
+	if (nodeStatus.Phase == v1alpha1.NodeFailed || nodeStatus.Phase == v1alpha1.NodeError) && nodeStatus.Message == EXIT_CODE_143_ERROR {
 		pod, err := clusterClient.CoreV1().Pods(namespace).Get(context.Background(), podName, metav1.GetOptions{})
 		if err != nil {
 			impl.logger.Errorw("error in getting pod from clusterClient", "podName", podName, "namespace", namespace, "err", err)
