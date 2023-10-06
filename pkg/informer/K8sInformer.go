@@ -538,6 +538,7 @@ func (impl *K8sInformerImpl) getWorkflowStatus(podObj *coreV1.Pod, nodeStatus v1
 	nodeStatus.BoundaryID = impl.getPodOwnerName(podObj)
 	nodeNameVsStatus[podObj.Name] = nodeStatus
 	workflowStatus.Nodes = nodeNameVsStatus
+	workflowStatus.Message = nodeStatus.Message
 	return workflowStatus
 }
 
