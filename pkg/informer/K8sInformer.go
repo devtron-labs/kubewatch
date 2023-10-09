@@ -286,7 +286,6 @@ func (impl *K8sInformerImpl) startSystemWorkflowInformer(clusterId int) error {
 			if podObj, ok := newObj.(*coreV1.Pod); ok {
 				impl.logger.Debugw("Event received in Pods update informer", "time", time.Now(), "podObjStatus", podObj.Status)
 				nodeStatus := impl.assessNodeStatus(podObj)
-				nodeStatus = impl.checkIfPodDeletedAndUpdateMessage(podObj.Name, podObj.Namespace, nodeStatus, clusterClient)
 				workflowStatus := impl.getWorkflowStatus(podObj, nodeStatus)
 				wfJson, err := json.Marshal(workflowStatus)
 				if err != nil {
@@ -294,6 +293,32 @@ func (impl *K8sInformerImpl) startSystemWorkflowInformer(clusterId int) error {
 					return
 				}
 				impl.logger.Debugw("sending system executor cd workflow update event", "workflow", string(wfJson))
+				if impl.pubSubClient == nil {
+					log.Println("don't publish")
+					return
+				}
+
+				err = impl.pubSubClient.Publish(pubsub.CD_WORKFLOW_STATUS_UPDATE, string(wfJson))
+				if err != nil {
+					impl.logger.Errorw("Error while publishing Request", "err", err)
+					return
+				}
+				impl.logger.Debug("cd workflow update sent")
+			}
+		},
+
+		DeleteFunc: func(newObj interface{}) {
+			if podObj, ok := newObj.(*coreV1.Pod); ok {
+				impl.logger.Debugw("Event received in Pods delete informer", "time", time.Now(), "podObjStatus", podObj.Status)
+				nodeStatus := impl.assessNodeStatus(podObj)
+				nodeStatus = impl.checkIfPodDeletedAndUpdateMessage(podObj.Name, podObj.Namespace, nodeStatus, clusterClient)
+				workflowStatus := impl.getWorkflowStatus(podObj, nodeStatus)
+				wfJson, err := json.Marshal(workflowStatus)
+				if err != nil {
+					impl.logger.Errorw("error occurred while marshalling workflowJson", "err", err)
+					return
+				}
+				impl.logger.Debugw("sending system executor cd workflow delete event", "workflow", string(wfJson))
 				if impl.pubSubClient == nil {
 					log.Println("don't publish")
 					return
