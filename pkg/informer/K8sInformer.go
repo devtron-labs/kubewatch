@@ -311,7 +311,11 @@ func (impl *K8sInformerImpl) startSystemWorkflowInformer(clusterId int) error {
 			if podObj, ok := newObj.(*coreV1.Pod); ok {
 				impl.logger.Debugw("Event received in Pods delete informer", "time", time.Now(), "podObjStatus", podObj.Status)
 				nodeStatus := impl.assessNodeStatus(podObj)
-				nodeStatus = impl.checkIfPodDeletedAndUpdateMessage(podObj.Name, podObj.Namespace, nodeStatus, clusterClient)
+				nodeStatus, reTriggerRequired := impl.checkIfPodDeletedAndUpdateMessage(podObj.Name, podObj.Namespace, nodeStatus, clusterClient)
+				if !reTriggerRequired {
+					//not sending this deleted event if it's not a re-trigger case
+					return
+				}
 				workflowStatus := impl.getWorkflowStatus(podObj, nodeStatus)
 				wfJson, err := json.Marshal(workflowStatus)
 				if err != nil {
@@ -339,21 +343,23 @@ func (impl *K8sInformerImpl) startSystemWorkflowInformer(clusterId int) error {
 	return nil
 }
 
-func (impl *K8sInformerImpl) checkIfPodDeletedAndUpdateMessage(podName, namespace string, nodeStatus v1alpha1.NodeStatus, clusterClient *kubernetes.Clientset) v1alpha1.NodeStatus {
+func (impl *K8sInformerImpl) checkIfPodDeletedAndUpdateMessage(podName, namespace string, nodeStatus v1alpha1.NodeStatus, clusterClient *kubernetes.Clientset) (v1alpha1.NodeStatus, bool) {
 	if (nodeStatus.Phase == v1alpha1.NodeFailed || nodeStatus.Phase == v1alpha1.NodeError) && nodeStatus.Message == EXIT_CODE_143_ERROR {
 		pod, err := clusterClient.CoreV1().Pods(namespace).Get(context.Background(), podName, metav1.GetOptions{})
 		if err != nil {
 			impl.logger.Errorw("error in getting pod from clusterClient", "podName", podName, "namespace", namespace, "err", err)
 			if isResourceNotFoundErr(err) {
 				nodeStatus.Message = POD_DELETED_MESSAGE
+				return nodeStatus, true
 			}
-			return nodeStatus
+			return nodeStatus, false
 		}
 		if pod.DeletionTimestamp != nil {
 			nodeStatus.Message = POD_DELETED_MESSAGE
+			return nodeStatus, true
 		}
 	}
-	return nodeStatus
+	return nodeStatus, false
 }
 
 func (impl *K8sInformerImpl) getK8sClientForCluster(clusterInfo *repository.Cluster) (*kubernetes.Clientset, error) {
