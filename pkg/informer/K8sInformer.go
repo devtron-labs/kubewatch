@@ -47,15 +47,16 @@ const (
 type K8sInformer interface {
 	startSystemWorkflowInformerForCluster(clusterInfo ClusterInfo) error
 	syncSystemWorkflowInformer(clusterId int) error
-	stopSystemWorkflowInformer(clusterId int)
-	startSystemWorkflowInformer(clusterId int) error
+	stopSystemWorkflowInformerCd(clusterId int)
+	startSystemWorkflowInformerForCd(clusterId int) error
 	BuildInformerForAllClusters() error
 }
 
 type K8sInformerImpl struct {
 	logger            *zap.SugaredLogger
 	mutex             sync.Mutex
-	informerStopper   map[int]chan struct{}
+	CdInformerStopper map[int]chan struct{}
+	CiInformerStopper map[int]chan struct{}
 	clusterRepository repository.ClusterRepository
 	DefaultK8sConfig  *rest.Config
 	pubSubClient      *pubsub.PubSubClientServiceImpl
@@ -69,7 +70,8 @@ func NewK8sInformerImpl(logger *zap.SugaredLogger, clusterRepository repository.
 	}
 	defaultK8sConfig, _ := utils.GetDefaultK8sConfig("kubeconfigK8s")
 	informerFactory.DefaultK8sConfig = defaultK8sConfig
-	informerFactory.informerStopper = make(map[int]chan struct{})
+	informerFactory.CdInformerStopper = make(map[int]chan struct{})
+	informerFactory.CiInformerStopper = make(map[int]chan struct{})
 	return informerFactory
 }
 
@@ -82,7 +84,8 @@ func (impl *K8sInformerImpl) BuildInformerForAllClusters() error {
 		return err
 	}
 	for _, model := range models {
-		impl.startSystemWorkflowInformer(model.Id)
+		impl.startSystemWorkflowInformerForCd(model.Id)
+		impl.startSystemWorkflowInformerForCi(model.Id)
 	}
 	return nil
 }
@@ -104,7 +107,13 @@ func (impl *K8sInformerImpl) startSystemWorkflowInformerForCluster(clusterInfo C
 		restConfig.Insecure = true
 	}
 
-	err := impl.startSystemWorkflowInformer(clusterInfo.ClusterId)
+	err := impl.startSystemWorkflowInformerForCd(clusterInfo.ClusterId)
+	if err != nil && err != errors.New(INFORMER_ALREADY_EXIST_MESSAGE) {
+		impl.logger.Error("error in creating informer for new cluster", "err", err)
+		return err
+	}
+
+	err = impl.startSystemWorkflowInformerForCi(clusterInfo.ClusterId)
 	if err != nil && err != errors.New(INFORMER_ALREADY_EXIST_MESSAGE) {
 		impl.logger.Error("error in creating informer for new cluster", "err", err)
 		return err
@@ -194,11 +203,17 @@ func (impl *K8sInformerImpl) handleClusterDelete(clusterId int) bool {
 		impl.logger.Errorw("Error in fetching cluster by id", "cluster-id ", clusterId, "err", err)
 		return true
 	}
-	impl.stopSystemWorkflowInformer(deleteClusterInfo.Id)
+	impl.stopSystemWorkflowInformerCd(deleteClusterInfo.Id)
 	if err != nil {
 		impl.logger.Errorw("error in updating informer for cluster", "id", clusterId, "err", err)
 		return true
 	}
+	impl.stopSystemWorkflowInformerCi(deleteClusterInfo.Id)
+	if err != nil {
+		impl.logger.Errorw("error in updating informer for cluster", "id", clusterId, "err", err)
+		return true
+	}
+
 	return false
 }
 
@@ -213,7 +228,12 @@ func (impl *K8sInformerImpl) handleClusterChangeEvent(secretObject *coreV1.Secre
 	var err error
 
 	if string(action) == ADD {
-		err = impl.startSystemWorkflowInformer(clusterId)
+		err = impl.startSystemWorkflowInformerForCd(clusterId)
+		if err != nil && err != errors.New(INFORMER_ALREADY_EXIST_MESSAGE) {
+			impl.logger.Error("error in adding informer for cluster", "id", clusterId, "err", err)
+			return
+		}
+		err := impl.startSystemWorkflowInformerForCi(clusterId)
 		if err != nil && err != errors.New(INFORMER_ALREADY_EXIST_MESSAGE) {
 			impl.logger.Error("error in adding informer for cluster", "id", clusterId, "err", err)
 			return
@@ -237,10 +257,16 @@ func (impl *K8sInformerImpl) syncSystemWorkflowInformer(clusterId int) error {
 	}
 	//before creating new informer for cluster, close existing one
 	impl.logger.Debugw("stopping informer for cluster - ", "cluster-name", clusterInfo.ClusterName, "cluster-id", clusterInfo.Id)
-	impl.stopSystemWorkflowInformer(clusterInfo.Id)
+	impl.stopSystemWorkflowInformerCd(clusterInfo.Id)
+	impl.stopSystemWorkflowInformerCi(clusterInfo.Id)
 	impl.logger.Debugw("informer stopped", "cluster-name", clusterInfo.ClusterName, "cluster-id", clusterInfo.Id)
 	//create new informer for cluster with new config
-	err = impl.startSystemWorkflowInformer(clusterId)
+	err = impl.startSystemWorkflowInformerForCd(clusterId)
+	if err != nil {
+		impl.logger.Errorw("error in starting informer for ", "cluster name", clusterInfo.ClusterName)
+		return err
+	}
+	err = impl.startSystemWorkflowInformerForCi(clusterId)
 	if err != nil {
 		impl.logger.Errorw("error in starting informer for ", "cluster name", clusterInfo.ClusterName)
 		return err
@@ -248,16 +274,25 @@ func (impl *K8sInformerImpl) syncSystemWorkflowInformer(clusterId int) error {
 	return nil
 }
 
-func (impl *K8sInformerImpl) stopSystemWorkflowInformer(clusterId int) {
-	stopper := impl.informerStopper[clusterId]
+func (impl *K8sInformerImpl) stopSystemWorkflowInformerCd(clusterId int) {
+	stopper := impl.CdInformerStopper[clusterId]
 	if stopper != nil {
 		close(stopper)
-		delete(impl.informerStopper, clusterId)
+		delete(impl.CdInformerStopper, clusterId)
 	}
 	return
 }
 
-func (impl *K8sInformerImpl) startSystemWorkflowInformer(clusterId int) error {
+func (impl *K8sInformerImpl) stopSystemWorkflowInformerCi(clusterId int) {
+	stopper := impl.CiInformerStopper[clusterId]
+	if stopper != nil {
+		close(stopper)
+		delete(impl.CiInformerStopper, clusterId)
+	}
+	return
+}
+
+func (impl *K8sInformerImpl) startSystemWorkflowInformerForCd(clusterId int) error {
 
 	clusterInfo, err := impl.clusterRepository.FindById(clusterId)
 	if err != nil {
@@ -265,7 +300,7 @@ func (impl *K8sInformerImpl) startSystemWorkflowInformer(clusterId int) error {
 		return err
 	}
 
-	if _, ok := impl.informerStopper[clusterId]; ok {
+	if _, ok := impl.CdInformerStopper[clusterId]; ok {
 		impl.logger.Debug(fmt.Sprintf("informer for %s already exist", clusterInfo.ClusterName))
 		return errors.New(INFORMER_ALREADY_EXIST_MESSAGE)
 	}
@@ -286,7 +321,7 @@ func (impl *K8sInformerImpl) startSystemWorkflowInformer(clusterId int) error {
 			if podObj, ok := newObj.(*coreV1.Pod); ok {
 				impl.logger.Debugw("Event received in Pods update informer", "time", time.Now(), "podObjStatus", podObj.Status)
 				nodeStatus := impl.assessNodeStatus(podObj)
-				workflowStatus := impl.getWorkflowStatus(podObj, nodeStatus)
+				workflowStatus := impl.getWorkflowStatus(podObj, nodeStatus, "cd")
 				wfJson, err := json.Marshal(workflowStatus)
 				if err != nil {
 					impl.logger.Errorw("error occurred while marshalling workflowJson", "err", err)
@@ -339,7 +374,64 @@ func (impl *K8sInformerImpl) startSystemWorkflowInformer(clusterId int) error {
 	})
 	informerFactory.Start(stopper)
 	impl.logger.Infow("informer started for cluster", "clusterId", clusterInfo.Id, "clusterName", clusterInfo.ClusterName)
-	impl.informerStopper[clusterId] = stopper
+	impl.CdInformerStopper[clusterId] = stopper
+	return nil
+}
+
+func (impl *K8sInformerImpl) startSystemWorkflowInformerForCi(clusterId int) error {
+
+	clusterInfo, err := impl.clusterRepository.FindById(clusterId)
+	if err != nil {
+		impl.logger.Errorw("error in fetching cluster", "clusterId", clusterId, "err", err)
+		return err
+	}
+
+	if _, ok := impl.CiInformerStopper[clusterId]; ok {
+		impl.logger.Debug(fmt.Sprintf("informer for %s already exist", clusterInfo.ClusterName))
+		return errors.New(INFORMER_ALREADY_EXIST_MESSAGE)
+	}
+	impl.logger.Infow("starting informer for cluster", "clusterId", clusterInfo.Id, "clusterName", clusterInfo.ClusterName)
+	clusterClient, err := impl.getK8sClientForCluster(clusterInfo)
+	if err != nil {
+		return err
+	}
+
+	labelOptions := kubeinformers.WithTweakListOptions(func(opts *metav1.ListOptions) {
+		opts.LabelSelector = "devtron.ai/purpose==workflow"
+	})
+	informerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(clusterClient, 15*time.Minute, labelOptions)
+	stopper := make(chan struct{})
+	podInformer := informerFactory.Core().V1().Pods()
+	podInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		UpdateFunc: func(oldObj, newObj interface{}) {
+			if podObj, ok := newObj.(*coreV1.Pod); ok {
+				impl.logger.Debugw("Event received in Pods update informer", "time", time.Now(), "podObjStatus", podObj.Status)
+				impl.logger.Debugw("podObj", "podObjName", podObj.Name)
+				nodeStatus := impl.assessNodeStatus(podObj)
+				workflowStatus := impl.getWorkflowStatus(podObj, nodeStatus, "ci")
+				wfJson, err := json.Marshal(workflowStatus)
+				if err != nil {
+					impl.logger.Errorw("error occurred while marshalling workflowJson", "err", err)
+					return
+				}
+				impl.logger.Debugw("sending system executor ci workflow update event", "workflow", string(wfJson))
+				if impl.pubSubClient == nil {
+					log.Println("don't publish")
+					return
+				}
+
+				err = impl.pubSubClient.Publish(pubsub.WORKFLOW_STATUS_UPDATE_TOPIC, string(wfJson))
+				if err != nil {
+					impl.logger.Errorw("Error while publishing Request", "err", err)
+					return
+				}
+				impl.logger.Debug("cd workflow update sent")
+			}
+		},
+	})
+	informerFactory.Start(stopper)
+	impl.logger.Infow("informer started for cluster", "clusterId", clusterInfo.Id, "clusterName", clusterInfo.ClusterName)
+	impl.CiInformerStopper[clusterId] = stopper
 	return nil
 }
 
@@ -552,7 +644,7 @@ func (impl *K8sInformerImpl) inferFailedReason(pod *coreV1.Pod) (v1alpha1.NodePh
 	return v1alpha1.NodeSucceeded, ""
 }
 
-func (impl *K8sInformerImpl) getWorkflowStatus(podObj *coreV1.Pod, nodeStatus v1alpha1.NodeStatus) *v1alpha1.WorkflowStatus {
+func (impl *K8sInformerImpl) getWorkflowStatus(podObj *coreV1.Pod, nodeStatus v1alpha1.NodeStatus, templateName string) *v1alpha1.WorkflowStatus {
 	workflowStatus := &v1alpha1.WorkflowStatus{}
 	workflowPhase := v1alpha1.WorkflowPhase(nodeStatus.Phase)
 	if workflowPhase == v1alpha1.WorkflowPending {
@@ -564,7 +656,7 @@ func (impl *K8sInformerImpl) getWorkflowStatus(podObj *coreV1.Pod, nodeStatus v1
 	workflowStatus.Phase = workflowPhase
 	nodeNameVsStatus := make(map[string]v1alpha1.NodeStatus, 1)
 	nodeStatus.ID = podObj.Name
-	nodeStatus.TemplateName = "cd"
+	nodeStatus.TemplateName = templateName
 	nodeStatus.Name = nodeStatus.ID
 	nodeStatus.BoundaryID = impl.getPodOwnerName(podObj)
 	nodeNameVsStatus[podObj.Name] = nodeStatus
