@@ -78,7 +78,7 @@ func (impl *K8sInformerImpl) BuildInformerForAllClusters() error {
 		return err
 	}
 	for _, model := range models {
-		impl.startSystemWorkflowInformerForCd(model.Id)
+		//impl.startSystemWorkflowInformerForCd(model.Id)
 		impl.startSystemWorkflowInformerForCi(model.Id)
 	}
 	return nil
@@ -101,13 +101,13 @@ func (impl *K8sInformerImpl) startSystemWorkflowInformerForCluster(clusterInfo C
 		restConfig.Insecure = true
 	}
 
-	err := impl.startSystemWorkflowInformerForCd(clusterInfo.ClusterId)
-	if err != nil && err != errors.New(INFORMER_ALREADY_EXIST_MESSAGE) {
-		impl.logger.Error("error in creating informer for new cluster", "err", err)
-		return err
-	}
+	//err := impl.startSystemWorkflowInformerForCd(clusterInfo.ClusterId)
+	//if err != nil && err != errors.New(INFORMER_ALREADY_EXIST_MESSAGE) {
+	//	impl.logger.Error("error in creating informer for new cluster", "err", err)
+	//	return err
+	//}
 
-	err = impl.startSystemWorkflowInformerForCi(clusterInfo.ClusterId)
+	err := impl.startSystemWorkflowInformerForCi(clusterInfo.ClusterId)
 	if err != nil && err != errors.New(INFORMER_ALREADY_EXIST_MESSAGE) {
 		impl.logger.Error("error in creating informer for new cluster", "err", err)
 		return err
@@ -216,12 +216,12 @@ func (impl *K8sInformerImpl) handleClusterChangeEvent(secretObject *coreV1.Secre
 	var err error
 
 	if string(action) == ADD {
-		err = impl.startSystemWorkflowInformerForCd(clusterId)
-		if err != nil && err != errors.New(INFORMER_ALREADY_EXIST_MESSAGE) {
-			impl.logger.Error("error in adding informer for cluster", "id", clusterId, "err", err)
-			return
-		}
-		err = impl.startSystemWorkflowInformerForCi(clusterId)
+		//err = impl.startSystemWorkflowInformerForCd(clusterId)
+		//if err != nil && err != errors.New(INFORMER_ALREADY_EXIST_MESSAGE) {
+		//	impl.logger.Error("error in adding informer for cluster", "id", clusterId, "err", err)
+		//	return
+		//}
+		err := impl.startSystemWorkflowInformerForCi(clusterId)
 		if err != nil && err != errors.New(INFORMER_ALREADY_EXIST_MESSAGE) {
 			impl.logger.Error("error in adding informer for cluster", "id", clusterId, "err", err)
 			return
@@ -248,11 +248,11 @@ func (impl *K8sInformerImpl) syncSystemWorkflowInformer(clusterId int) error {
 	impl.stopSystemWorkflowInformer(clusterInfo.Id)
 	impl.logger.Debugw("informer stopped", "cluster-name", clusterInfo.ClusterName, "cluster-id", clusterInfo.Id)
 	//create new informer for cluster with new config
-	err = impl.startSystemWorkflowInformerForCd(clusterId)
-	if err != nil {
-		impl.logger.Errorw("error in starting informer for ", "cluster name", clusterInfo.ClusterName)
-		return err
-	}
+	//err = impl.startSystemWorkflowInformerForCd(clusterId)
+	//if err != nil {
+	//	impl.logger.Errorw("error in starting informer for ", "cluster name", clusterInfo.ClusterName)
+	//	return err
+	//}
 	err = impl.startSystemWorkflowInformerForCi(clusterId)
 	if err != nil {
 		impl.logger.Errorw("error in starting informer for ", "cluster name", clusterInfo.ClusterName)
