@@ -43,7 +43,7 @@ const (
 type K8sInformer interface {
 	startSystemWorkflowInformerForCluster(clusterInfo ClusterInfo) error
 	syncSystemWorkflowInformer(clusterId int) error
-	stopSystemWorkflowInformer(clusterId int)
+	stopSystemWorkflowInformerCd(clusterId int)
 	startSystemWorkflowInformerForCd(clusterId int) error
 	BuildInformerForAllClusters() error
 }
@@ -51,7 +51,8 @@ type K8sInformer interface {
 type K8sInformerImpl struct {
 	logger            *zap.SugaredLogger
 	mutex             sync.Mutex
-	informerStopper   map[int]chan struct{}
+	CdInformerStopper map[int]chan struct{}
+	CiInformerStopper map[int]chan struct{}
 	clusterRepository repository.ClusterRepository
 	DefaultK8sConfig  *rest.Config
 	pubSubClient      *pubsub.PubSubClientServiceImpl
@@ -65,7 +66,8 @@ func NewK8sInformerImpl(logger *zap.SugaredLogger, clusterRepository repository.
 	}
 	defaultK8sConfig, _ := utils.GetDefaultK8sConfig("kubeconfigK8s")
 	informerFactory.DefaultK8sConfig = defaultK8sConfig
-	informerFactory.informerStopper = make(map[int]chan struct{})
+	informerFactory.CdInformerStopper = make(map[int]chan struct{})
+	informerFactory.CiInformerStopper = make(map[int]chan struct{})
 	return informerFactory
 }
 
@@ -197,11 +199,17 @@ func (impl *K8sInformerImpl) handleClusterDelete(clusterId int) bool {
 		impl.logger.Errorw("Error in fetching cluster by id", "cluster-id ", clusterId, "err", err)
 		return true
 	}
-	impl.stopSystemWorkflowInformer(deleteClusterInfo.Id)
+	impl.stopSystemWorkflowInformerCd(deleteClusterInfo.Id)
 	if err != nil {
 		impl.logger.Errorw("error in updating informer for cluster", "id", clusterId, "err", err)
 		return true
 	}
+	impl.stopSystemWorkflowInformerCi(deleteClusterInfo.Id)
+	if err != nil {
+		impl.logger.Errorw("error in updating informer for cluster", "id", clusterId, "err", err)
+		return true
+	}
+
 	return false
 }
 
@@ -245,7 +253,8 @@ func (impl *K8sInformerImpl) syncSystemWorkflowInformer(clusterId int) error {
 	}
 	//before creating new informer for cluster, close existing one
 	impl.logger.Debugw("stopping informer for cluster - ", "cluster-name", clusterInfo.ClusterName, "cluster-id", clusterInfo.Id)
-	impl.stopSystemWorkflowInformer(clusterInfo.Id)
+	impl.stopSystemWorkflowInformerCd(clusterInfo.Id)
+	impl.stopSystemWorkflowInformerCi(clusterInfo.Id)
 	impl.logger.Debugw("informer stopped", "cluster-name", clusterInfo.ClusterName, "cluster-id", clusterInfo.Id)
 	//create new informer for cluster with new config
 	err = impl.startSystemWorkflowInformerForCd(clusterId)
@@ -261,11 +270,20 @@ func (impl *K8sInformerImpl) syncSystemWorkflowInformer(clusterId int) error {
 	return nil
 }
 
-func (impl *K8sInformerImpl) stopSystemWorkflowInformer(clusterId int) {
-	stopper := impl.informerStopper[clusterId]
+func (impl *K8sInformerImpl) stopSystemWorkflowInformerCd(clusterId int) {
+	stopper := impl.CdInformerStopper[clusterId]
 	if stopper != nil {
 		close(stopper)
-		delete(impl.informerStopper, clusterId)
+		delete(impl.CdInformerStopper, clusterId)
+	}
+	return
+}
+
+func (impl *K8sInformerImpl) stopSystemWorkflowInformerCi(clusterId int) {
+	stopper := impl.CiInformerStopper[clusterId]
+	if stopper != nil {
+		close(stopper)
+		delete(impl.CiInformerStopper, clusterId)
 	}
 	return
 }
@@ -278,7 +296,7 @@ func (impl *K8sInformerImpl) startSystemWorkflowInformerForCd(clusterId int) err
 		return err
 	}
 
-	if _, ok := impl.informerStopper[clusterId]; ok {
+	if _, ok := impl.CdInformerStopper[clusterId]; ok {
 		impl.logger.Debug(fmt.Sprintf("informer for %s already exist", clusterInfo.ClusterName))
 		return errors.New(INFORMER_ALREADY_EXIST_MESSAGE)
 	}
@@ -322,7 +340,7 @@ func (impl *K8sInformerImpl) startSystemWorkflowInformerForCd(clusterId int) err
 	})
 	informerFactory.Start(stopper)
 	impl.logger.Infow("informer started for cluster", "clusterId", clusterInfo.Id, "clusterName", clusterInfo.ClusterName)
-	impl.informerStopper[clusterId] = stopper
+	impl.CdInformerStopper[clusterId] = stopper
 	return nil
 }
 
@@ -334,7 +352,7 @@ func (impl *K8sInformerImpl) startSystemWorkflowInformerForCi(clusterId int) err
 		return err
 	}
 
-	if _, ok := impl.informerStopper[clusterId]; ok {
+	if _, ok := impl.CiInformerStopper[clusterId]; ok {
 		impl.logger.Debug(fmt.Sprintf("informer for %s already exist", clusterInfo.ClusterName))
 		return errors.New(INFORMER_ALREADY_EXIST_MESSAGE)
 	}
@@ -379,7 +397,7 @@ func (impl *K8sInformerImpl) startSystemWorkflowInformerForCi(clusterId int) err
 	})
 	informerFactory.Start(stopper)
 	impl.logger.Infow("informer started for cluster", "clusterId", clusterInfo.Id, "clusterName", clusterInfo.ClusterName)
-	impl.informerStopper[clusterId] = stopper
+	impl.CiInformerStopper[clusterId] = stopper
 	return nil
 }
 
