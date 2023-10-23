@@ -299,7 +299,7 @@ func (impl *K8sInformerImpl) startSystemWorkflowInformerForCd(clusterId int) err
 			if podObj, ok := newObj.(*coreV1.Pod); ok {
 				impl.logger.Debugw("Event received in Pods update informer", "time", time.Now(), "podObjStatus", podObj.Status)
 				nodeStatus := impl.assessNodeStatus(podObj)
-				workflowStatus := impl.getWorkflowStatus(podObj, nodeStatus)
+				workflowStatus := impl.getWorkflowStatus(podObj, nodeStatus, "cd")
 				wfJson, err := json.Marshal(workflowStatus)
 				if err != nil {
 					impl.logger.Errorw("error occurred while marshalling workflowJson", "err", err)
@@ -356,7 +356,7 @@ func (impl *K8sInformerImpl) startSystemWorkflowInformerForCi(clusterId int) err
 				impl.logger.Debugw("Event received in Pods update informer", "time", time.Now(), "podObjStatus", podObj.Status)
 				impl.logger.Debugw("podObj", "podObjName", podObj.Name)
 				nodeStatus := impl.assessNodeStatus(podObj)
-				workflowStatus := impl.getWorkflowStatus(podObj, nodeStatus)
+				workflowStatus := impl.getWorkflowStatus(podObj, nodeStatus, "ci")
 				wfJson, err := json.Marshal(workflowStatus)
 				if err != nil {
 					impl.logger.Errorw("error occurred while marshalling workflowJson", "err", err)
@@ -573,7 +573,7 @@ func (impl *K8sInformerImpl) inferFailedReason(pod *coreV1.Pod) (v1alpha1.NodePh
 	return v1alpha1.NodeSucceeded, ""
 }
 
-func (impl *K8sInformerImpl) getWorkflowStatus(podObj *coreV1.Pod, nodeStatus v1alpha1.NodeStatus) *v1alpha1.WorkflowStatus {
+func (impl *K8sInformerImpl) getWorkflowStatus(podObj *coreV1.Pod, nodeStatus v1alpha1.NodeStatus, templateName string) *v1alpha1.WorkflowStatus {
 	workflowStatus := &v1alpha1.WorkflowStatus{}
 	workflowPhase := v1alpha1.WorkflowPhase(nodeStatus.Phase)
 	if workflowPhase == v1alpha1.WorkflowPending {
@@ -585,7 +585,7 @@ func (impl *K8sInformerImpl) getWorkflowStatus(podObj *coreV1.Pod, nodeStatus v1
 	workflowStatus.Phase = workflowPhase
 	nodeNameVsStatus := make(map[string]v1alpha1.NodeStatus, 1)
 	nodeStatus.ID = podObj.Name
-	nodeStatus.TemplateName = "cd"
+	nodeStatus.TemplateName = templateName
 	nodeStatus.Name = nodeStatus.ID
 	nodeStatus.BoundaryID = impl.getPodOwnerName(podObj)
 	nodeNameVsStatus[podObj.Name] = nodeStatus
