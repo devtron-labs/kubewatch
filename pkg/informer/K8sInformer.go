@@ -257,7 +257,7 @@ func (impl *K8sInformerImpl) startSystemWorkflowInformer(clusterId int) error {
 
 	clusterInfo, err := impl.clusterRepository.FindById(clusterId)
 	if err != nil {
-		impl.logger.Errorw("error in fetching cluster","clusterId",clusterId, "err", err)
+		impl.logger.Errorw("error in fetching cluster", "clusterId", clusterId, "err", err)
 		return err
 	}
 
@@ -281,6 +281,7 @@ func (impl *K8sInformerImpl) startSystemWorkflowInformer(clusterId int) error {
 		UpdateFunc: func(oldObj, newObj interface{}) {
 			if podObj, ok := newObj.(*coreV1.Pod); ok {
 				impl.logger.Debugw("Event received in Pods update informer", "time", time.Now(), "podObjStatus", podObj.Status)
+				impl.logger.Debugw("podObj", podObj)
 				nodeStatus := impl.assessNodeStatus(podObj)
 				workflowStatus := impl.getWorkflowStatus(podObj, nodeStatus)
 				wfJson, err := json.Marshal(workflowStatus)
@@ -509,7 +510,7 @@ func (impl *K8sInformerImpl) getWorkflowStatus(podObj *coreV1.Pod, nodeStatus v1
 		workflowStatus.FinishedAt = nodeStatus.FinishedAt
 	}
 	workflowStatus.Phase = workflowPhase
-	nodeNameVsStatus := make(map[string]v1alpha1.NodeStatus,1)
+	nodeNameVsStatus := make(map[string]v1alpha1.NodeStatus, 1)
 	nodeStatus.ID = podObj.Name
 	nodeStatus.TemplateName = "cd"
 	nodeStatus.Name = nodeStatus.ID

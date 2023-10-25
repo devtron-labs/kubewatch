@@ -162,6 +162,11 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 		logger.Fatal("error occurred while parsing ci config", err)
 	}
 	var namespace string
+	clusterCfg := &ClusterConfig{}
+	err = env.Parse(clusterCfg)
+	if clusterCfg.ClusterType == ClusterTypeAll && !externalCD.External {
+		startSystemWorkflowInformer(logger)
+	}
 	if ciCfg.CiInformer {
 		if externalCD.External {
 			namespace = externalCD.Namespace
@@ -184,11 +189,6 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 			namespace = externalCD.Namespace
 		} else {
 			namespace = cdCfg.DefaultNamespace
-		}
-		clusterCfg := &ClusterConfig{}
-		err = env.Parse(clusterCfg)
-		if clusterCfg.ClusterType == ClusterTypeAll && !externalCD.External {
-			startSystemWorkflowInformer(logger)
 		}
 		stopCh := make(chan struct{})
 		defer close(stopCh)
