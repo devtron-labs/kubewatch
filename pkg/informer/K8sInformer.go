@@ -335,63 +335,6 @@ func (impl *K8sInformerImpl) startSystemWorkflowInformer(clusterId int, informer
 	return nil
 }
 
-func (impl *K8sInformerImpl) startSystemWorkflowInformerForCi(clusterId int) error {
-
-	clusterInfo, err := impl.clusterRepository.FindById(clusterId)
-	if err != nil {
-		impl.logger.Errorw("error in fetching cluster", "clusterId", clusterId, "err", err)
-		return err
-	}
-
-	if _, ok := impl.CiInformerStopper[clusterId]; !ok {
-		impl.logger.Debug(fmt.Sprintf("informer for %s already exist", clusterInfo.ClusterName))
-		return errors.New(INFORMER_ALREADY_EXIST_MESSAGE)
-	}
-	impl.logger.Infow("starting informer for cluster", "clusterId", clusterInfo.Id, "clusterName", clusterInfo.ClusterName)
-	clusterClient, err := impl.getK8sClientForCluster(clusterInfo)
-	if err != nil {
-		return err
-	}
-
-	labelOptions := kubeinformers.WithTweakListOptions(func(opts *metav1.ListOptions) {
-		opts.LabelSelector = "devtron.ai/purpose==workflow"
-	})
-	informerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(clusterClient, 15*time.Minute, labelOptions)
-	stopper := make(chan struct{})
-	podInformer := informerFactory.Core().V1().Pods()
-	podInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		UpdateFunc: func(oldObj, newObj interface{}) {
-			if podObj, ok := newObj.(*coreV1.Pod); ok {
-				impl.logger.Debugw("Event received in Pods update informer", "time", time.Now(), "podObjStatus", podObj.Status)
-				impl.logger.Debugw("podObj", "podObjName", podObj.Name)
-				nodeStatus := impl.assessNodeStatus(podObj)
-				workflowStatus := impl.getWorkflowStatus(podObj, nodeStatus, "ci")
-				wfJson, err := json.Marshal(workflowStatus)
-				if err != nil {
-					impl.logger.Errorw("error occurred while marshalling workflowJson", "err", err)
-					return
-				}
-				impl.logger.Debugw("sending system executor ci workflow update event", "workflow", string(wfJson))
-				if impl.pubSubClient == nil {
-					log.Println("don't publish")
-					return
-				}
-
-				err = impl.pubSubClient.Publish(pubsub.WORKFLOW_STATUS_UPDATE_TOPIC, string(wfJson))
-				if err != nil {
-					impl.logger.Errorw("Error while publishing Request", "err", err)
-					return
-				}
-				impl.logger.Debug("cd workflow update sent")
-			}
-		},
-	})
-	informerFactory.Start(stopper)
-	impl.logger.Infow("informer started for cluster", "clusterId", clusterInfo.Id, "clusterName", clusterInfo.ClusterName)
-	impl.CiInformerStopper[clusterId] = stopper
-	return nil
-}
-
 func (impl *K8sInformerImpl) getK8sClientForCluster(clusterInfo *repository.Cluster) (*kubernetes.Clientset, error) {
 	restConfig := &rest.Config{}
 	if clusterInfo.ClusterName == DEFAULT_CLUSTER {
