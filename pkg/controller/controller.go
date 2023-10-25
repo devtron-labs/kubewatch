@@ -117,13 +117,6 @@ type ExternalCdConfig struct {
 	Namespace   string `env:"CD_EXTERNAL_NAMESPACE" envDefault:""`
 }
 
-type ExternalCiConfig struct {
-	External    bool   `env:"CI_EXTERNAL_REST_LISTENER" envDefault:"false"`
-	Token       string `env:"CI_EXTERNAL_ORCHESTRATOR_TOKEN" envDefault:""`
-	ListenerUrl string `env:"CI_EXTERNAL_LISTENER_URL" envDefault:"http://devtroncd-orchestrator-service-prod.devtroncd:80"`
-	Namespace   string `env:"CI_EXTERNAL_NAMESPACE" envDefault:""`
-}
-
 type AcdConfig struct {
 	ACDNamespace string `env:"ACD_NAMESPACE" envDefault:"devtroncd"`
 	ACDInformer  bool   `env:"ACD_INFORMER" envDefault:"true"`
