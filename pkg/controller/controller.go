@@ -164,9 +164,6 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 	var namespace string
 	clusterCfg := &ClusterConfig{}
 	err = env.Parse(clusterCfg)
-	if clusterCfg.ClusterType == ClusterTypeAll && !externalCD.External {
-		startSystemWorkflowInformer(logger)
-	}
 	if ciCfg.CiInformer {
 		if externalCD.External {
 			namespace = externalCD.Namespace
@@ -194,7 +191,9 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 		defer close(stopCh)
 		startWorkflowInformer(namespace, logger, pubsub.CD_WORKFLOW_STATUS_UPDATE, stopCh, dynamicClient, externalCD)
 	}
-
+	if clusterCfg.ClusterType == ClusterTypeAll && !externalCD.External {
+		startSystemWorkflowInformer(logger)
+	}
 	acdCfg := &AcdConfig{}
 	err = env.Parse(acdCfg)
 	if err != nil {
