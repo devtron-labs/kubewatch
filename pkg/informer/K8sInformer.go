@@ -38,6 +38,8 @@ const (
 	INFORMER_ALREADY_EXIST_MESSAGE   = "INFORMER_ALREADY_EXIST"
 	ADD                              = "add"
 	UPDATE                           = "update"
+	CI_WORKFLOW_NAME                 = "ci"
+	CD_WORKFLOW_NAME                 = "cd"
 )
 
 type K8sInformer interface {
@@ -268,18 +270,18 @@ func (impl *K8sInformerImpl) stopSystemWorkflowInformerCi(clusterId int) {
 }
 
 func (impl *K8sInformerImpl) startSystemWorkflowInformerForCiCd(clusterId int) error {
-	err := impl.startSystemWorkflowInformer(clusterId, impl.CdInformerStopper, pubsub.CD_WORKFLOW_STATUS_UPDATE)
+	err := impl.startSystemWorkflowInformer(clusterId, impl.CdInformerStopper, pubsub.CD_WORKFLOW_STATUS_UPDATE, CD_WORKFLOW_NAME)
 	if err != nil && err != errors.New(INFORMER_ALREADY_EXIST_MESSAGE) {
 		return err
 	}
-	err = impl.startSystemWorkflowInformer(clusterId, impl.CiInformerStopper, pubsub.WORKFLOW_STATUS_UPDATE_TOPIC)
+	err = impl.startSystemWorkflowInformer(clusterId, impl.CiInformerStopper, pubsub.WORKFLOW_STATUS_UPDATE_TOPIC, CI_WORKFLOW_NAME)
 	if err != nil && err != errors.New(INFORMER_ALREADY_EXIST_MESSAGE) {
 		return err
 	}
 	return nil
 }
 
-func (impl *K8sInformerImpl) startSystemWorkflowInformer(clusterId int, informerStopper map[int]chan struct{}, eventType string) error {
+func (impl *K8sInformerImpl) startSystemWorkflowInformer(clusterId int, informerStopper map[int]chan struct{}, eventType string, workflowName string) error {
 
 	clusterInfo, err := impl.clusterRepository.FindById(clusterId)
 	if err != nil {
@@ -308,7 +310,7 @@ func (impl *K8sInformerImpl) startSystemWorkflowInformer(clusterId int, informer
 			if podObj, ok := newObj.(*coreV1.Pod); ok {
 				impl.logger.Debugw("Event received in Pods update informer", "time", time.Now(), "podObjStatus", podObj.Status)
 				nodeStatus := impl.assessNodeStatus(podObj)
-				workflowStatus := impl.getWorkflowStatus(podObj, nodeStatus, "cd")
+				workflowStatus := impl.getWorkflowStatus(podObj, nodeStatus, workflowName)
 				wfJson, err := json.Marshal(workflowStatus)
 				if err != nil {
 					impl.logger.Errorw("error occurred while marshalling workflowJson", "err", err)
