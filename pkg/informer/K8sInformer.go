@@ -284,6 +284,8 @@ func (impl *K8sInformerImpl) startSystemWorkflowInformer(clusterId int) error {
 			if podObj, ok := newObj.(*coreV1.Pod); ok {
 				workflowType := podObj.Labels["workflowType"]
 				impl.logger.Debugw("Event received in Pods update informer", "time", time.Now(), "podObjStatus", podObj.Status)
+				impl.logger.Debugw("WorkflowType", "workflowType", podObj.Labels["workflowType"])
+				impl.logger.Debugw("Labels", "Labels", podObj.Labels)
 				nodeStatus := impl.assessNodeStatus(podObj)
 				workflowStatus := impl.getWorkflowStatus(podObj, nodeStatus, workflowType)
 				wfJson, err := json.Marshal(workflowStatus)
