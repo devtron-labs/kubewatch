@@ -190,7 +190,7 @@ func (impl *K8sInformerImpl) handleClusterDelete(clusterId int) bool {
 		impl.logger.Errorw("Error in fetching cluster by id", "cluster-id ", clusterId, "err", err)
 		return true
 	}
-	impl.stopSystemWorkflowInformer(deleteClusterInfo.Id)
+	impl.stopSystemWorkflowInformerForCiCd(deleteClusterInfo.Id)
 
 	return false
 }
@@ -230,7 +230,7 @@ func (impl *K8sInformerImpl) syncSystemWorkflowInformer(clusterId int) error {
 	}
 	//before creating new informer for cluster, close existing one
 	impl.logger.Debugw("stopping informer for cluster - ", "cluster-name", clusterInfo.ClusterName, "cluster-id", clusterInfo.Id)
-	impl.stopSystemWorkflowInformer(clusterInfo.Id)
+	impl.stopSystemWorkflowInformerForCiCd(clusterInfo.Id)
 	impl.logger.Debugw("informer stopped", "cluster-name", clusterInfo.ClusterName, "cluster-id", clusterInfo.Id)
 	//create new informer for cluster with new config
 	err = impl.startSystemWorkflowInformerForCiCd(clusterId)
@@ -241,7 +241,7 @@ func (impl *K8sInformerImpl) syncSystemWorkflowInformer(clusterId int) error {
 	return nil
 }
 
-func (impl *K8sInformerImpl) stopSystemWorkflowInformer(clusterId int) {
+func (impl *K8sInformerImpl) stopSystemWorkflowInformerForCiCd(clusterId int) {
 	stopper := impl.CdInformerStopper[clusterId]
 	if stopper != nil {
 		close(stopper)
