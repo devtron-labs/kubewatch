@@ -38,6 +38,8 @@ const (
 	INFORMER_ALREADY_EXIST_MESSAGE   = "INFORMER_ALREADY_EXIST"
 	ADD                              = "add"
 	UPDATE                           = "update"
+	CI_WORKFLOW_NAME                 = "ci"
+	CD_WORKFLOW_NAME                 = "cd"
 )
 
 type K8sInformer interface {
@@ -280,10 +282,10 @@ func (impl *K8sInformerImpl) startSystemWorkflowInformer(clusterId int) error {
 	podInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		UpdateFunc: func(oldObj, newObj interface{}) {
 			if podObj, ok := newObj.(*coreV1.Pod); ok {
+				workflowType := podObj.Labels["workflowType"]
 				impl.logger.Debugw("Event received in Pods update informer", "time", time.Now(), "podObjStatus", podObj.Status)
-				impl.logger.Debugw("podObj", "podObj", podObj)
 				nodeStatus := impl.assessNodeStatus(podObj)
-				workflowStatus := impl.getWorkflowStatus(podObj, nodeStatus)
+				workflowStatus := impl.getWorkflowStatus(podObj, nodeStatus, workflowType)
 				wfJson, err := json.Marshal(workflowStatus)
 				if err != nil {
 					impl.logger.Errorw("error occurred while marshalling workflowJson", "err", err)
@@ -294,12 +296,20 @@ func (impl *K8sInformerImpl) startSystemWorkflowInformer(clusterId int) error {
 					log.Println("don't publish")
 					return
 				}
-
-				err = impl.pubSubClient.Publish(pubsub.CD_WORKFLOW_STATUS_UPDATE, string(wfJson))
-				if err != nil {
-					impl.logger.Errorw("Error while publishing Request", "err", err)
-					return
+				if workflowType == CD_WORKFLOW_NAME {
+					err = impl.pubSubClient.Publish(pubsub.CD_WORKFLOW_STATUS_UPDATE, string(wfJson))
+					if err != nil {
+						impl.logger.Errorw("Error while publishing Request", "err", err)
+						return
+					}
+				} else if workflowType == CI_WORKFLOW_NAME {
+					err = impl.pubSubClient.Publish(pubsub.WORKFLOW_STATUS_UPDATE_TOPIC, string(wfJson))
+					if err != nil {
+						impl.logger.Errorw("Error while publishing Request", "err", err)
+						return
+					}
 				}
+
 				impl.logger.Debug("cd workflow update sent")
 			}
 		},
@@ -500,7 +510,7 @@ func (impl *K8sInformerImpl) inferFailedReason(pod *coreV1.Pod) (v1alpha1.NodePh
 	return v1alpha1.NodeSucceeded, ""
 }
 
-func (impl *K8sInformerImpl) getWorkflowStatus(podObj *coreV1.Pod, nodeStatus v1alpha1.NodeStatus) *v1alpha1.WorkflowStatus {
+func (impl *K8sInformerImpl) getWorkflowStatus(podObj *coreV1.Pod, nodeStatus v1alpha1.NodeStatus, templateName string) *v1alpha1.WorkflowStatus {
 	workflowStatus := &v1alpha1.WorkflowStatus{}
 	workflowPhase := v1alpha1.WorkflowPhase(nodeStatus.Phase)
 	if workflowPhase == v1alpha1.WorkflowPending {
@@ -512,7 +522,7 @@ func (impl *K8sInformerImpl) getWorkflowStatus(podObj *coreV1.Pod, nodeStatus v1
 	workflowStatus.Phase = workflowPhase
 	nodeNameVsStatus := make(map[string]v1alpha1.NodeStatus, 1)
 	nodeStatus.ID = podObj.Name
-	nodeStatus.TemplateName = "cd"
+	nodeStatus.TemplateName = templateName
 	nodeStatus.Name = nodeStatus.ID
 	nodeStatus.BoundaryID = impl.getPodOwnerName(podObj)
 	nodeNameVsStatus[podObj.Name] = nodeStatus
