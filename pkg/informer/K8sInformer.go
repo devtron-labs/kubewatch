@@ -1,6 +1,7 @@
 package informer
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 	"github.com/devtron-labs/kubewatch/pkg/utils"
 	"go.uber.org/zap"
 	coreV1 "k8s.io/api/core/v1"
+	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
@@ -38,15 +40,13 @@ const (
 	INFORMER_ALREADY_EXIST_MESSAGE   = "INFORMER_ALREADY_EXIST"
 	ADD                              = "add"
 	UPDATE                           = "update"
+	POD_DELETED_MESSAGE              = "pod deleted"
+	EXIT_CODE_143_ERROR              = "Error (exit code 143)"
 	CI_WORKFLOW_NAME                 = "ci"
 	CD_WORKFLOW_NAME                 = "cd"
 )
 
 type K8sInformer interface {
-	startSystemWorkflowInformerForCluster(clusterInfo ClusterInfo) error
-	syncSystemWorkflowInformer(clusterId int) error
-	stopSystemWorkflowInformer(clusterId int)
-	startSystemWorkflowInformer(clusterId int) error
 	BuildInformerForAllClusters() error
 }
 
@@ -284,8 +284,6 @@ func (impl *K8sInformerImpl) startSystemWorkflowInformer(clusterId int) error {
 			if podObj, ok := newObj.(*coreV1.Pod); ok {
 				workflowType := podObj.Labels["workflowType"]
 				impl.logger.Debugw("Event received in Pods update informer", "time", time.Now(), "podObjStatus", podObj.Status)
-				impl.logger.Debugw("WorkflowType", "workflowType", podObj.Labels["workflowType"])
-				impl.logger.Debugw("Labels", "Labels", podObj.Labels)
 				nodeStatus := impl.assessNodeStatus(podObj)
 				workflowStatus := impl.getWorkflowStatus(podObj, nodeStatus, workflowType)
 				wfJson, err := json.Marshal(workflowStatus)
@@ -311,6 +309,45 @@ func (impl *K8sInformerImpl) startSystemWorkflowInformer(clusterId int) error {
 						return
 					}
 				}
+				impl.logger.Debug("cd workflow update sent")
+			}
+		},
+
+		DeleteFunc: func(newObj interface{}) {
+			if podObj, ok := newObj.(*coreV1.Pod); ok {
+				workflowType := podObj.Labels["workflowType"]
+				impl.logger.Debugw("Event received in Pods delete informer", "time", time.Now(), "podObjStatus", podObj.Status)
+				nodeStatus := impl.assessNodeStatus(podObj)
+				nodeStatus, reTriggerRequired := impl.checkIfPodDeletedAndUpdateMessage(podObj.Name, podObj.Namespace, nodeStatus, clusterClient)
+				if !reTriggerRequired {
+					//not sending this deleted event if it's not a re-trigger case
+					return
+				}
+				workflowStatus := impl.getWorkflowStatus(podObj, nodeStatus, workflowType)
+				wfJson, err := json.Marshal(workflowStatus)
+				if err != nil {
+					impl.logger.Errorw("error occurred while marshalling workflowJson", "err", err)
+					return
+				}
+				impl.logger.Debugw("sending system executor cd workflow delete event", "workflow", string(wfJson))
+				if impl.pubSubClient == nil {
+					log.Println("don't publish")
+					return
+				}
+
+				if workflowType == CD_WORKFLOW_NAME {
+					err = impl.pubSubClient.Publish(pubsub.CD_WORKFLOW_STATUS_UPDATE, string(wfJson))
+					if err != nil {
+						impl.logger.Errorw("Error while publishing Request", "err", err)
+						return
+					}
+				} else if workflowType == CI_WORKFLOW_NAME {
+					err = impl.pubSubClient.Publish(pubsub.WORKFLOW_STATUS_UPDATE_TOPIC, string(wfJson))
+					if err != nil {
+						impl.logger.Errorw("Error while publishing Request", "err", err)
+						return
+					}
+				}
 
 				impl.logger.Debug("cd workflow update sent")
 			}
@@ -320,6 +357,25 @@ func (impl *K8sInformerImpl) startSystemWorkflowInformer(clusterId int) error {
 	impl.logger.Infow("informer started for cluster", "clusterId", clusterInfo.Id, "clusterName", clusterInfo.ClusterName)
 	impl.informerStopper[clusterId] = stopper
 	return nil
+}
+
+func (impl *K8sInformerImpl) checkIfPodDeletedAndUpdateMessage(podName, namespace string, nodeStatus v1alpha1.NodeStatus, clusterClient *kubernetes.Clientset) (v1alpha1.NodeStatus, bool) {
+	if (nodeStatus.Phase == v1alpha1.NodeFailed || nodeStatus.Phase == v1alpha1.NodeError) && nodeStatus.Message == EXIT_CODE_143_ERROR {
+		pod, err := clusterClient.CoreV1().Pods(namespace).Get(context.Background(), podName, metav1.GetOptions{})
+		if err != nil {
+			impl.logger.Errorw("error in getting pod from clusterClient", "podName", podName, "namespace", namespace, "err", err)
+			if isResourceNotFoundErr(err) {
+				nodeStatus.Message = POD_DELETED_MESSAGE
+				return nodeStatus, true
+			}
+			return nodeStatus, false
+		}
+		if pod.DeletionTimestamp != nil {
+			nodeStatus.Message = POD_DELETED_MESSAGE
+			return nodeStatus, true
+		}
+	}
+	return nodeStatus, false
 }
 
 func (impl *K8sInformerImpl) getK8sClientForCluster(clusterInfo *repository.Cluster) (*kubernetes.Clientset, error) {
@@ -529,6 +585,7 @@ func (impl *K8sInformerImpl) getWorkflowStatus(podObj *coreV1.Pod, nodeStatus v1
 	nodeStatus.BoundaryID = impl.getPodOwnerName(podObj)
 	nodeNameVsStatus[podObj.Name] = nodeStatus
 	workflowStatus.Nodes = nodeNameVsStatus
+	workflowStatus.Message = nodeStatus.Message
 	return workflowStatus
 }
 
@@ -540,4 +597,11 @@ func (impl *K8sInformerImpl) getPodOwnerName(podObj *coreV1.Pod) string {
 		}
 	}
 	return podObj.Name
+}
+
+func isResourceNotFoundErr(err error) bool {
+	if errStatus, ok := err.(*k8sErrors.StatusError); ok && errStatus.Status().Reason == metav1.StatusReasonNotFound {
+		return true
+	}
+	return false
 }
