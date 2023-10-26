@@ -110,7 +110,8 @@ type CdConfig struct {
 	CdInformer       bool   `env:"CD_INFORMER" envDefault:"true"`
 }
 
-type ExternalCdConfig struct {
+// This is being used by CI as well as CD
+type ExternalConfig struct {
 	External    bool   `env:"CD_EXTERNAL_REST_LISTENER" envDefault:"false"`
 	Token       string `env:"CD_EXTERNAL_ORCHESTRATOR_TOKEN" envDefault:""`
 	ListenerUrl string `env:"CD_EXTERNAL_LISTENER_URL" envDefault:"http://devtroncd-orchestrator-service-prod.devtroncd:80"`
@@ -141,7 +142,7 @@ var client *pubsub.PubSubClientServiceImpl
 func Start(conf *config.Config, eventHandler handlers.Handler) {
 	logger := logger.NewSugaredLogger()
 	cfg, _ := utils.GetDefaultK8sConfig("kubeconfig")
-	externalCD := &ExternalCdConfig{}
+	externalCD := &ExternalConfig{}
 	err := env.Parse(externalCD)
 	if err != nil {
 		logger.Fatal("error occurred while parsing external cd config", err)
@@ -270,7 +271,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 	<-sigterm
 }
 
-func startWorkflowInformer(namespace string, logger *zap.SugaredLogger, eventName string, stopCh chan struct{}, dynamicClient dynamic.Interface, externalCD *ExternalCdConfig) {
+func startWorkflowInformer(namespace string, logger *zap.SugaredLogger, eventName string, stopCh chan struct{}, dynamicClient dynamic.Interface, externalCD *ExternalConfig) {
 
 	workflowInformer := util2.NewWorkflowInformer(dynamicClient, namespace, 0, nil, cache.Indexers{})
 	logger.Debugw("NewWorkflowInformer", "workflowInformer", workflowInformer)
@@ -329,7 +330,7 @@ type PublishRequest struct {
 	Payload json.RawMessage `json:"payload"`
 }
 
-func PublishEventsOnRest(jsonBody []byte, topic string, externalCdConfig *ExternalCdConfig) error {
+func PublishEventsOnRest(jsonBody []byte, topic string, externalCdConfig *ExternalConfig) error {
 	publishRequest := &PublishRequest{
 		Topic:   topic,
 		Payload: jsonBody,

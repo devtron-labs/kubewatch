@@ -283,7 +283,12 @@ func (impl *K8sInformerImpl) startSystemWorkflowInformer(clusterId int) error {
 	podInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		UpdateFunc: func(oldObj, newObj interface{}) {
 			if podObj, ok := newObj.(*coreV1.Pod); ok {
-				workflowType := podObj.Labels[WORKFLOW_TYPE_LABEL_KEY]
+				var workflowType string
+				if podObj.Labels != nil {
+					if val, ok := podObj.Labels[WORKFLOW_TYPE_LABEL_KEY]; ok {
+						workflowType = val
+					}
+				}
 				impl.logger.Debugw("Event received in Pods update informer", "time", time.Now(), "podObjStatus", podObj.Status)
 				nodeStatus := impl.assessNodeStatus(podObj)
 				workflowStatus := impl.getWorkflowStatus(podObj, nodeStatus, workflowType)
@@ -292,31 +297,34 @@ func (impl *K8sInformerImpl) startSystemWorkflowInformer(clusterId int) error {
 					impl.logger.Errorw("error occurred while marshalling workflowJson", "err", err)
 					return
 				}
-				impl.logger.Debugw("sending system executor cd workflow update event", "workflow", string(wfJson))
+				impl.logger.Debugw("sending system executor workflow update event", "workflow", string(wfJson))
 				if impl.pubSubClient == nil {
 					log.Println("don't publish")
 					return
 				}
-				if workflowType == CD_WORKFLOW_NAME {
-					err = impl.pubSubClient.Publish(pubsub.CD_WORKFLOW_STATUS_UPDATE, string(wfJson))
-					if err != nil {
-						impl.logger.Errorw("Error while publishing Request", "err", err)
-						return
-					}
-				} else if workflowType == CI_WORKFLOW_NAME {
-					err = impl.pubSubClient.Publish(pubsub.WORKFLOW_STATUS_UPDATE_TOPIC, string(wfJson))
-					if err != nil {
-						impl.logger.Errorw("Error while publishing Request", "err", err)
-						return
-					}
+				topic, err := getTopic(workflowType)
+				if err != nil {
+					impl.logger.Errorw("Error while getting Topic")
+					return
 				}
+				err = impl.pubSubClient.Publish(topic, string(wfJson))
+				if err != nil {
+					impl.logger.Errorw("Error while publishing Request", "err", err)
+					return
+				}
+
 				impl.logger.Debug("cd workflow update sent")
 			}
 		},
 
 		DeleteFunc: func(newObj interface{}) {
 			if podObj, ok := newObj.(*coreV1.Pod); ok {
-				workflowType := podObj.Labels[WORKFLOW_TYPE_LABEL_KEY]
+				var workflowType string
+				if podObj.Labels != nil {
+					if val, ok := podObj.Labels[WORKFLOW_TYPE_LABEL_KEY]; ok {
+						workflowType = val
+					}
+				}
 				impl.logger.Debugw("Event received in Pods delete informer", "time", time.Now(), "podObjStatus", podObj.Status)
 				nodeStatus := impl.assessNodeStatus(podObj)
 				nodeStatus, reTriggerRequired := impl.checkIfPodDeletedAndUpdateMessage(podObj.Name, podObj.Namespace, nodeStatus, clusterClient)
@@ -335,21 +343,17 @@ func (impl *K8sInformerImpl) startSystemWorkflowInformer(clusterId int) error {
 					log.Println("don't publish")
 					return
 				}
-
-				if workflowType == CD_WORKFLOW_NAME {
-					err = impl.pubSubClient.Publish(pubsub.CD_WORKFLOW_STATUS_UPDATE, string(wfJson))
-					if err != nil {
-						impl.logger.Errorw("Error while publishing Request", "err", err)
-						return
-					}
-				} else if workflowType == CI_WORKFLOW_NAME {
-					err = impl.pubSubClient.Publish(pubsub.WORKFLOW_STATUS_UPDATE_TOPIC, string(wfJson))
-					if err != nil {
-						impl.logger.Errorw("Error while publishing Request", "err", err)
-						return
-					}
+				topic, err := getTopic(workflowType)
+				if err != nil {
+					impl.logger.Errorw("Error while getting Topic")
+					return
 				}
 
+				err = impl.pubSubClient.Publish(topic, string(wfJson))
+				if err != nil {
+					impl.logger.Errorw("Error while publishing Request", "err", err)
+					return
+				}
 				impl.logger.Debug("cd workflow update sent")
 			}
 		},
@@ -358,6 +362,16 @@ func (impl *K8sInformerImpl) startSystemWorkflowInformer(clusterId int) error {
 	impl.logger.Infow("informer started for cluster", "clusterId", clusterInfo.Id, "clusterName", clusterInfo.ClusterName)
 	impl.informerStopper[clusterId] = stopper
 	return nil
+}
+
+func getTopic(workflowType string) (string, error) {
+	switch workflowType {
+	case CD_WORKFLOW_NAME:
+		return pubsub.CD_WORKFLOW_STATUS_UPDATE, nil
+	case CI_WORKFLOW_NAME:
+		return pubsub.WORKFLOW_STATUS_UPDATE_TOPIC, nil
+	}
+	return "", fmt.Errorf("no topic mapped to workflow type %s", workflowType)
 }
 
 func (impl *K8sInformerImpl) checkIfPodDeletedAndUpdateMessage(podName, namespace string, nodeStatus v1alpha1.NodeStatus, clusterClient *kubernetes.Clientset) (v1alpha1.NodeStatus, bool) {
