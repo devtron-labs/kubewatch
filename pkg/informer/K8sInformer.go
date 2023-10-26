@@ -44,6 +44,7 @@ const (
 	EXIT_CODE_143_ERROR              = "Error (exit code 143)"
 	CI_WORKFLOW_NAME                 = "ci"
 	CD_WORKFLOW_NAME                 = "cd"
+	WORKFLOW_TYPE_LABEL_KEY          = "workflowType"
 )
 
 type K8sInformer interface {
@@ -282,7 +283,7 @@ func (impl *K8sInformerImpl) startSystemWorkflowInformer(clusterId int) error {
 	podInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		UpdateFunc: func(oldObj, newObj interface{}) {
 			if podObj, ok := newObj.(*coreV1.Pod); ok {
-				workflowType := podObj.Labels["workflowType"]
+				workflowType := podObj.Labels[WORKFLOW_TYPE_LABEL_KEY]
 				impl.logger.Debugw("Event received in Pods update informer", "time", time.Now(), "podObjStatus", podObj.Status)
 				nodeStatus := impl.assessNodeStatus(podObj)
 				workflowStatus := impl.getWorkflowStatus(podObj, nodeStatus, workflowType)
@@ -315,7 +316,7 @@ func (impl *K8sInformerImpl) startSystemWorkflowInformer(clusterId int) error {
 
 		DeleteFunc: func(newObj interface{}) {
 			if podObj, ok := newObj.(*coreV1.Pod); ok {
-				workflowType := podObj.Labels["workflowType"]
+				workflowType := podObj.Labels[WORKFLOW_TYPE_LABEL_KEY]
 				impl.logger.Debugw("Event received in Pods delete informer", "time", time.Now(), "podObjStatus", podObj.Status)
 				nodeStatus := impl.assessNodeStatus(podObj)
 				nodeStatus, reTriggerRequired := impl.checkIfPodDeletedAndUpdateMessage(podObj.Name, podObj.Namespace, nodeStatus, clusterClient)
