@@ -240,6 +240,9 @@ const (
 	// ArgoProgressPath defines the path to a file used for self reporting progress
 	ArgoProgressPath = VarRunArgoPath + "/progress"
 
+	// ErrDeadlineExceeded is the pod status reason when exceed deadline
+	ErrDeadlineExceeded = "DeadlineExceeded"
+
 	ConfigMapName = "workflow-controller-configmap"
 )
 

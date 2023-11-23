@@ -44,4 +44,3 @@ sdks/python/client/dist/*
 # Do not commit rendered installation manifests since they are misleading to users.
 manifests/install.yaml
 manifests/namespace-install.yaml
-/logs

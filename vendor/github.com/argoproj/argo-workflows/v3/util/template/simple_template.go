@@ -6,8 +6,6 @@ import (
 	"strconv"
 	"strings"
 
-	log "github.com/sirupsen/logrus"
-
 	"github.com/argoproj/argo-workflows/v3/errors"
 )
 
@@ -26,7 +24,6 @@ func simpleReplace(w io.Writer, tag string, replaceMap map[string]string, allowU
 		}
 		if allowUnresolved {
 			// just write the same string back
-			log.WithError(errors.InternalError("unresolved")).Debug("unresolved is allowed ")
 			return w.Write([]byte(fmt.Sprintf("{{%s}}", tag)))
 		}
 		return 0, errors.Errorf(errors.CodeBadRequest, "failed to resolve {{%s}}", tag)

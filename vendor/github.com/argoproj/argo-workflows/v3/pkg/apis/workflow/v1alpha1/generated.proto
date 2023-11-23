@@ -6,7 +6,7 @@ syntax = "proto2";
 package github.com.argoproj.argo_workflows.v3.pkg.apis.workflow.v1alpha1;
 
 import "k8s.io/api/core/v1/generated.proto";
-import "k8s.io/api/policy/v1/generated.proto";
+import "k8s.io/api/policy/v1beta1/generated.proto";
 import "k8s.io/apimachinery/pkg/apis/meta/v1/generated.proto";
 import "k8s.io/apimachinery/pkg/runtime/generated.proto";
 import "k8s.io/apimachinery/pkg/runtime/schema/generated.proto";
@@ -369,20 +369,6 @@ message ClusterWorkflowTemplateList {
   optional k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
 
   repeated ClusterWorkflowTemplate items = 2;
-}
-
-// Column is a custom column that will be exposed in the Workflow List View.
-// +patchStrategy=merge
-// +patchMergeKey=name
-message Column {
-  // The name of this column, e.g., "Workflow Completed".
-  optional string name = 1;
-
-  // The type of this column, "label" or "annotation".
-  optional string type = 2;
-
-  // The key of the label or annotation, e.g., "workflows.argoproj.io/completed".
-  optional string key = 3;
 }
 
 message Condition {
@@ -874,7 +860,7 @@ message Link {
   // The name of the link, E.g. "Workflow Logs" or "Pod Logs"
   optional string name = 1;
 
-  // "workflow", "pod", "pod-logs", "event-source-logs", "sensor-logs", "workflow-list" or "chat"
+  // "workflow", "pod", "pod-logs", "event-source-logs", "sensor-logs" or "chat"
   optional string scope = 2;
 
   // The URL. Can contain "${metadata.namespace}", "${metadata.name}", "${status.startedAt}", "${status.finishedAt}" or any other element in workflow yaml, e.g. "${workflow.metadata.annotations.userDefinedKey}"
@@ -1002,8 +988,6 @@ message NodeStatus {
 
   // Phase a simple, high-level summary of where the node is in its lifecycle.
   // Can be used as a state machine.
-  // Will be one of these values "Pending", "Running" before the node is completed, or "Succeeded",
-  // "Skipped", "Failed", "Error", or "Omitted" as a final state.
   optional string phase = 7;
 
   // BoundaryID indicates the node ID of the associated template root node in which this node belongs to
@@ -1482,8 +1466,7 @@ message SuppliedValueFrom {
 
 // SuspendTemplate is a template subtype to suspend a workflow at a predetermined point in time
 message SuspendTemplate {
-  // Duration is the seconds to wait before automatically resuming a template. Must be a string. Default unit is seconds.
-  // Could also be a Duration, e.g.: "2m", "6h", "1d"
+  // Duration is the seconds to wait before automatically resuming a template
   optional string duration = 1;
 }
 
@@ -1546,7 +1529,7 @@ message Template {
   // Metdata sets the pods's metadata, i.e. annotations and labels
   optional Metadata metadata = 9;
 
-  // Daemon will allow a workflow to proceed to the next step so long as the container reaches readiness
+  // Deamon will allow a workflow to proceed to the next step so long as the container reaches readiness
   optional bool daemon = 10;
 
   // Steps define a series of sequential/parallel workflow steps
@@ -1972,7 +1955,7 @@ message WorkflowSpec {
   // Controller will automatically add the selector with workflow name, if selector is empty.
   // Optional: Defaults to empty.
   // +optional
-  optional k8s.io.api.policy.v1.PodDisruptionBudgetSpec podDisruptionBudget = 31;
+  optional k8s.io.api.policy.v1beta1.PodDisruptionBudgetSpec podDisruptionBudget = 31;
 
   // Metrics are a list of metrics emitted from this Workflow
   optional Metrics metrics = 32;
@@ -2016,8 +1999,6 @@ message WorkflowSpec {
 // WorkflowStatus contains overall status information about a workflow
 message WorkflowStatus {
   // Phase a simple, high-level summary of where the workflow is in its lifecycle.
-  // Will be "" (Unknown), "Pending", or "Running" before the workflow is completed, and "Succeeded",
-  // "Failed" or "Error" once the workflow has completed.
   optional string phase = 1;
 
   // Time at which this workflow started

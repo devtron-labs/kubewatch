@@ -6,16 +6,16 @@ MAKEFLAGS += --no-builtin-rules
 .SUFFIXES:
 
 BUILD_DATE            := $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
-# copied verbatim to release.yaml
-GIT_COMMIT            := $(shell git rev-parse HEAD || echo unknown)
+GIT_COMMIT            := $(shell git rev-parse HEAD)
 GIT_REMOTE            := origin
 GIT_BRANCH            := $(shell git rev-parse --symbolic-full-name --verify --quiet --abbrev-ref HEAD)
-# copied verbatim to release.yaml
 GIT_TAG               := $(shell git describe --exact-match --tags --abbrev=0  2> /dev/null || echo untagged)
 GIT_TREE_STATE        := $(shell if [ -z "`git status --porcelain`" ]; then echo "clean" ; else echo "dirty"; fi)
 RELEASE_TAG           := $(shell if [[ "$(GIT_TAG)" =~ ^v[0-9]+\.[0-9]+\.[0-9]+.*$$ ]]; then echo "true"; else echo "false"; fi)
-DEV_BRANCH            := $(shell [ "$(GIT_BRANCH)" = master ] || [ `echo $(GIT_BRANCH) | cut -c -8` = release- ] || [ `echo $(GIT_BRANCH) | cut -c -4` = dev- ] || [ $(RELEASE_TAG) = true ] && echo false || echo true)
+DEV_BRANCH            := $(shell [ $(GIT_BRANCH) = master ] || [ `echo $(GIT_BRANCH) | cut -c -8` = release- ] || [ `echo $(GIT_BRANCH) | cut -c -4` = dev- ] || [ $(RELEASE_TAG) = true ] && echo false || echo true)
 SRC                   := $(GOPATH)/src/github.com/argoproj/argo-workflows
+
+GREP_LOGS             := ""
 
 
 # docker image publishing options
@@ -51,17 +51,14 @@ else
 STATIC_FILES          ?= $(shell [ $(DEV_BRANCH) = true ] && echo false || echo true)
 endif
 
+# start the Controller
+CTRL                  ?= true
+# tail logs
+LOGS                  ?= $(CTRL)
 # start the UI
-UI                    ?= false
+UI                    ?= $(shell [ $(CTRL) = true ] && echo false || echo true)
 # start the Argo Server
 API                   ?= $(UI)
-TASKS                 := controller
-ifeq ($(API),true)
-TASKS                 := controller server
-endif
-ifeq ($(UI),true)
-TASKS                 := controller server ui
-endif
 GOTEST                ?= go test -v -p 20
 PROFILE               ?= minimal
 PLUGINS               ?= $(shell [ $PROFILE = plugins ] && echo false || echo true)
@@ -99,9 +96,9 @@ $(info RUN_MODE=$(RUN_MODE) PROFILE=$(PROFILE) AUTH_MODE=$(AUTH_MODE) SECURE=$(S
 
 override LDFLAGS += \
   -X github.com/argoproj/argo-workflows/v3.version=$(VERSION) \
-  -X github.com/argoproj/argo-workflows/v3.buildDate=$(BUILD_DATE) \
-  -X github.com/argoproj/argo-workflows/v3.gitCommit=$(GIT_COMMIT) \
-  -X github.com/argoproj/argo-workflows/v3.gitTreeState=$(GIT_TREE_STATE)
+  -X github.com/argoproj/argo-workflows/v3.buildDate=${BUILD_DATE} \
+  -X github.com/argoproj/argo-workflows/v3.gitCommit=${GIT_COMMIT} \
+  -X github.com/argoproj/argo-workflows/v3.gitTreeState=${GIT_TREE_STATE}
 
 ifneq ($(GIT_TAG),)
 override LDFLAGS += -X github.com/argoproj/argo-workflows/v3.gitTag=${GIT_TAG}
@@ -234,13 +231,9 @@ argoexec-image:
 
 %-image:
 	[ ! -e dist/$* ] || mv dist/$* .
-	docker buildx build \
-		--build-arg GIT_COMMIT=$(GIT_COMMIT) \
-		--build-arg GIT_TAG=$(GIT_TAG) \
-		--build-arg GIT_TREE_STATE=$(GIT_TREE_STATE) \
+	docker build \
 		-t $(IMAGE_NAMESPACE)/$*:$(VERSION) \
 		--target $* \
-		--load \
 		 .
 	[ ! -e $* ] || mv $* dist/
 	docker run --rm -t $(IMAGE_NAMESPACE)/$*:$(VERSION) version
@@ -308,8 +301,7 @@ ifeq (, $(shell which clang-format))
 ifeq ($(shell uname),Darwin)
 	brew install clang-format
 else
-	sudo apt update
-	sudo apt install clang-format
+	sudo apt-get install clang-format
 endif
 endif
 
@@ -322,7 +314,7 @@ pkg/apis/workflow/v1alpha1/generated.proto: $(GOPATH)/bin/go-to-protobuf $(PROTO
 	$(GOPATH)/bin/go-to-protobuf \
 		--go-header-file=./hack/custom-boilerplate.go.txt \
 		--packages=github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1 \
-		--apimachinery-packages=+k8s.io/apimachinery/pkg/util/intstr,+k8s.io/apimachinery/pkg/api/resource,k8s.io/apimachinery/pkg/runtime/schema,+k8s.io/apimachinery/pkg/runtime,k8s.io/apimachinery/pkg/apis/meta/v1,k8s.io/api/core/v1,k8s.io/api/policy/v1 \
+		--apimachinery-packages=+k8s.io/apimachinery/pkg/util/intstr,+k8s.io/apimachinery/pkg/api/resource,k8s.io/apimachinery/pkg/runtime/schema,+k8s.io/apimachinery/pkg/runtime,k8s.io/apimachinery/pkg/apis/meta/v1,k8s.io/api/core/v1,k8s.io/api/policy/v1beta1 \
 		--proto-import $(GOPATH)/src
 	# Delete the link
 	[ -e ./v3 ] && rm -rf v3
@@ -454,29 +446,26 @@ dist/argosay:
 	mkdir -p dist
 	cp test/e2e/images/argosay/v2/argosay dist/
 
-.PHONY: kit
-kit:
-ifeq ($(shell command -v kit),)
-ifeq ($(shell uname),Darwin)
-	brew tap kitproj/kit --custom-remote https://github.com/kitproj/kit
-	brew install kit
-else
-	curl -q https://raw.githubusercontent.com/kitproj/kit/main/install.sh | tag=v0.1.8 sh
-endif
-endif
-
+$(GOPATH)/bin/goreman:
+	go install github.com/mattn/goreman@v0.3.11
 
 .PHONY: start
 ifeq ($(RUN_MODE),local)
 ifeq ($(API),true)
-start: install controller kit cli
+start: install controller cli $(GOPATH)/bin/goreman
 else
-start: install controller kit
+start: install controller $(GOPATH)/bin/goreman
 endif
 else
-start: install kit
+start: install
 endif
 	@echo "starting STATIC_FILES=$(STATIC_FILES) (DEV_BRANCH=$(DEV_BRANCH), GIT_BRANCH=$(GIT_BRANCH)), AUTH_MODE=$(AUTH_MODE), RUN_MODE=$(RUN_MODE), MANAGED_NAMESPACE=$(MANAGED_NAMESPACE)"
+ifneq ($(CTRL),true)
+	@echo "⚠️️  not starting controller. If you want to test the controller, use 'make start CTRL=true' to start it"
+endif
+ifneq ($(LOGS),true)
+	@echo "⚠️️  not starting logs. If you want to tail logs, use 'make start LOGS=true' to start it"
+endif
 ifneq ($(API),true)
 	@echo "⚠️️  not starting API. If you want to test the API, use 'make start API=true' to start it"
 endif
@@ -494,9 +483,17 @@ endif
 	grep '127.0.0.1.*minio' /etc/hosts
 	grep '127.0.0.1.*postgres' /etc/hosts
 	grep '127.0.0.1.*mysql' /etc/hosts
+	./hack/port-forward.sh
 ifeq ($(RUN_MODE),local)
-	env DEFAULT_REQUEUE_TIME=$(DEFAULT_REQUEUE_TIME) ARGO_SECURE=$(SECURE) ALWAYS_OFFLOAD_NODE_STATUS=$(ALWAYS_OFFLOAD_NODE_STATUS) ARGO_LOG_LEVEL=$(LOG_LEVEL) UPPERIO_DB_DEBUG=$(UPPERIO_DB_DEBUG) ARGO_AUTH_MODE=$(AUTH_MODE) ARGO_NAMESPACED=$(NAMESPACED) ARGO_NAMESPACE=$(KUBE_NAMESPACE) ARGO_MANAGED_NAMESPACE=$(MANAGED_NAMESPACE) ARGO_EXECUTOR_PLUGINS=$(PLUGINS) PROFILE=$(PROFILE) kit $(TASKS)
+	env DEFAULT_REQUEUE_TIME=$(DEFAULT_REQUEUE_TIME) SECURE=$(SECURE) ALWAYS_OFFLOAD_NODE_STATUS=$(ALWAYS_OFFLOAD_NODE_STATUS) LOG_LEVEL=$(LOG_LEVEL) UPPERIO_DB_DEBUG=$(UPPERIO_DB_DEBUG) IMAGE_NAMESPACE=$(IMAGE_NAMESPACE) VERSION=$(VERSION) AUTH_MODE=$(AUTH_MODE) NAMESPACED=$(NAMESPACED) NAMESPACE=$(KUBE_NAMESPACE) MANAGED_NAMESPACE=$(MANAGED_NAMESPACE) CTRL=$(CTRL) LOGS=$(LOGS) UI=$(UI) API=$(API) PLUGINS=$(PLUGINS) $(GOPATH)/bin/goreman -set-ports=false -logtime=false start $(shell if [ -z $GREP_LOGS ]; then echo; else echo "| grep \"$(GREP_LOGS)\""; fi)
 endif
+
+$(GOPATH)/bin/stern:
+	go install github.com/stern/stern@latest
+
+.PHONY: logs
+logs: $(GOPATH)/bin/stern
+	$(GOPATH)/bin/stern -l workflows.argoproj.io/workflow 2>&1
 
 .PHONY: wait
 wait:
@@ -643,8 +640,7 @@ docs-lint: /usr/local/bin/markdownlint
 docs: /usr/local/bin/mkdocs \
 	docs-spellcheck \
 	docs-lint \
-	# TODO: This is temporarily disabled to unblock merging PRs.
-	# docs-linkcheck
+	docs-linkcheck
 	# check environment-variables.md contains all variables mentioned in the code
 	./hack/check-env-doc.sh
 	# check all docs are listed in mkdocs.yml
@@ -681,5 +677,4 @@ release-notes: /dev/null
 
 .PHONY: checksums
 checksums:
-	sha256sum ./dist/argo-*.gz | awk -F './dist/' '{print $$1 $$2}' > ./dist/argo-workflows-cli-checksums.txt
-
+	for f in ./dist/argo-*.gz; do openssl dgst -sha256 "$$f" | awk ' { print $$2 }' > "$$f".sha256 ; done

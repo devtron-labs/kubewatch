@@ -45,8 +45,8 @@ func GetPodNameVersion() PodNameVersion {
 	}
 }
 
-// GeneratePodName return a deterministic pod name
-func GeneratePodName(workflowName, nodeName, templateName, nodeID string, version PodNameVersion) string {
+// PodName return a deterministic pod name
+func PodName(workflowName, nodeName, templateName, nodeID string, version PodNameVersion) string {
 	if version == PodNameV1 {
 		return nodeID
 	}
@@ -79,10 +79,8 @@ func ensurePodNamePrefixLength(prefix string) string {
 // given workflow
 func GetWorkflowPodNameVersion(wf *v1alpha1.Workflow) PodNameVersion {
 	annotations := wf.GetAnnotations()
-	version, ok := annotations[common.AnnotationKeyPodNameVersion]
-	if !ok {
-		return GetPodNameVersion()
-	}
+	version := annotations[common.AnnotationKeyPodNameVersion]
+
 	switch version {
 	case PodNameV1.String():
 		return PodNameV1

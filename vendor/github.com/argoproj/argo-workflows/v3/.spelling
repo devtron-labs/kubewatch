@@ -36,9 +36,6 @@ Artifactory
 BlackRock
 Breitgand
 Couler
-ClusterRoleBinding
-CRD
-CRDs
 DataDog
 Dataflow
 DeleteObject
@@ -51,14 +48,11 @@ GSoC
 GitOps
 Github
 Golang
-goroutine
-goroutines
 Grafana
 Grammarly
 Hadoop
 Heptio
 Homebrew
-InitContainer
 InsideBoard
 Invocators
 Istio
@@ -66,7 +60,6 @@ J.P.
 Jemison
 JetBrains
 KNative
-Kaniko
 Katacoda
 Kerberos
 Killercoda
@@ -100,7 +93,6 @@ Roadmap
 RoleBinding
 s3
 SDKs
-ServiceAccount
 Sharding
 Singer.io
 Snyk
@@ -135,7 +127,6 @@ cron
 daemoned
 dev-container
 dinever
-dockershim
 dropdown
 e.g.
 e2e
@@ -226,4 +217,3 @@ yaml
 idempotence
 kube-scheduler
 kube-apiserver
-kubectl

@@ -15,7 +15,7 @@ import (
 	"time"
 
 	apiv1 "k8s.io/api/core/v1"
-	policyv1 "k8s.io/api/policy/v1"
+	policyv1beta "k8s.io/api/policy/v1beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -200,6 +200,23 @@ func (w *Workflow) GetExecSpec() *WorkflowSpec {
 		return w.Status.StoredWorkflowSpec
 	}
 	return &w.Spec
+}
+
+func (w *Workflow) HasArtifactGC() bool {
+
+	if w.Spec.ArtifactGC != nil && w.Spec.ArtifactGC.Strategy != ArtifactGCNever && w.Spec.ArtifactGC.Strategy != ArtifactGCStrategyUndefined {
+		return true
+	}
+
+	// either it's defined by an Output Artifact or by the WorkflowSpec itself, or both
+	for _, template := range w.GetTemplates() {
+		for _, artifact := range template.Outputs.Artifacts {
+			if artifact.GetArtifactGC().Strategy != ArtifactGCNever && artifact.GetArtifactGC().Strategy != ArtifactGCStrategyUndefined {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // return the ultimate ArtifactGCStrategy for the Artifact
@@ -390,7 +407,7 @@ type WorkflowSpec struct {
 	// Controller will automatically add the selector with workflow name, if selector is empty.
 	// Optional: Defaults to empty.
 	// +optional
-	PodDisruptionBudget *policyv1.PodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty" protobuf:"bytes,31,opt,name=podDisruptionBudget"`
+	PodDisruptionBudget *policyv1beta.PodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty" protobuf:"bytes,31,opt,name=podDisruptionBudget"`
 
 	// Metrics are a list of metrics emitted from this Workflow
 	Metrics *Metrics `json:"metrics,omitempty" protobuf:"bytes,32,opt,name=metrics"`
@@ -624,7 +641,7 @@ type Template struct {
 	// Metdata sets the pods's metadata, i.e. annotations and labels
 	Metadata Metadata `json:"metadata,omitempty" protobuf:"bytes,9,opt,name=metadata"`
 
-	// Daemon will allow a workflow to proceed to the next step so long as the container reaches readiness
+	// Deamon will allow a workflow to proceed to the next step so long as the container reaches readiness
 	Daemon *bool `json:"daemon,omitempty" protobuf:"bytes,10,opt,name=daemon"`
 
 	// Steps define a series of sequential/parallel workflow steps
@@ -1649,11 +1666,11 @@ type WorkflowTemplateRef struct {
 	ClusterScope bool `json:"clusterScope,omitempty" protobuf:"varint,2,opt,name=clusterScope"`
 }
 
-func (ref *WorkflowTemplateRef) ToTemplateRef(template string) *TemplateRef {
+func (ref *WorkflowTemplateRef) ToTemplateRef(entrypoint string) *TemplateRef {
 	return &TemplateRef{
 		Name:         ref.Name,
 		ClusterScope: ref.ClusterScope,
-		Template:     template,
+		Template:     entrypoint,
 	}
 }
 
@@ -1735,33 +1752,6 @@ func (s Nodes) Children(parentNodeId string) Nodes {
 	return childNodes
 }
 
-// NestedChildrenStatus takes in a nodeID and returns all its children, this involves a tree search using DFS.
-// This is needed to mark all children nodes as failed for example.
-func (s Nodes) NestedChildrenStatus(parentNodeId string) ([]NodeStatus, error) {
-	parentNode, ok := s[parentNodeId]
-	if !ok {
-		return nil, fmt.Errorf("could not find %s in nodes when searching for nested children", parentNodeId)
-	}
-
-	children := []NodeStatus{}
-	toexplore := []NodeStatus{parentNode}
-
-	for len(toexplore) > 0 {
-		childNode := toexplore[0]
-		toexplore = toexplore[1:]
-		for _, nodeID := range childNode.Children {
-			toexplore = append(toexplore, s[nodeID])
-		}
-
-		if childNode.Name == parentNode.Name {
-			continue
-		}
-		children = append(children, childNode)
-	}
-
-	return children, nil
-}
-
 // Filter returns the subset of the nodes that match the predicate, e.g. only failed nodes
 func (s Nodes) Filter(predicate func(NodeStatus) bool) Nodes {
 	filteredNodes := make(Nodes)
@@ -1796,8 +1786,6 @@ type UserContainer struct {
 // WorkflowStatus contains overall status information about a workflow
 type WorkflowStatus struct {
 	// Phase a simple, high-level summary of where the workflow is in its lifecycle.
-	// Will be "" (Unknown), "Pending", or "Running" before the workflow is completed, and "Succeeded",
-	// "Failed" or "Error" once the workflow has completed.
 	Phase WorkflowPhase `json:"phase,omitempty" protobuf:"bytes,1,opt,name=phase,casttype=WorkflowPhase"`
 
 	// Time at which this workflow started
@@ -2087,8 +2075,6 @@ type NodeStatus struct {
 
 	// Phase a simple, high-level summary of where the node is in its lifecycle.
 	// Can be used as a state machine.
-	// Will be one of these values "Pending", "Running" before the node is completed, or "Succeeded",
-	// "Skipped", "Failed", "Error", or "Omitted" as a final state.
 	Phase NodePhase `json:"phase,omitempty" protobuf:"bytes,7,opt,name=phase,casttype=NodePhase"`
 
 	// BoundaryID indicates the node ID of the associated template root node in which this node belongs to
@@ -2226,7 +2212,7 @@ func (n NodeStatus) Pending() bool {
 	return n.Phase == NodePending
 }
 
-// IsDaemoned returns whether or not the node is daemoned
+// IsDaemoned returns whether or not the node is deamoned
 func (n NodeStatus) IsDaemoned() bool {
 	if n.Daemoned == nil || !*n.Daemoned {
 		return false
@@ -2937,10 +2923,9 @@ func (tmpl *Template) GetVolumeMounts() []apiv1.VolumeMount {
 	return nil
 }
 
-// HasOutput returns true if the template can and will have outputs (i.e. exit code and result).
-// In the case of a plugin, we assume it will have outputs because we cannot know at runtime.
+// whether or not the template can and will have outputs (i.e. exit code and result)
 func (tmpl *Template) HasOutput() bool {
-	return tmpl.Container != nil || tmpl.ContainerSet.HasContainerNamed("main") || tmpl.Script != nil || tmpl.Data != nil || tmpl.HTTP != nil || tmpl.Plugin != nil
+	return tmpl.Container != nil || tmpl.ContainerSet.HasContainerNamed("main") || tmpl.Script != nil || tmpl.Data != nil || tmpl.HTTP != nil
 }
 
 func (t *Template) IsDaemon() bool {
@@ -3076,8 +3061,7 @@ func (t *DAGTask) ShouldExpand() bool {
 
 // SuspendTemplate is a template subtype to suspend a workflow at a predetermined point in time
 type SuspendTemplate struct {
-	// Duration is the seconds to wait before automatically resuming a template. Must be a string. Default unit is seconds.
-	// Could also be a Duration, e.g.: "2m", "6h", "1d"
+	// Duration is the seconds to wait before automatically resuming a template
 	Duration string `json:"duration,omitempty" protobuf:"bytes,1,opt,name=duration"`
 }
 
@@ -3207,6 +3191,13 @@ func (wf *Workflow) GetTemplateByName(name string) *Template {
 	return nil
 }
 
+func (w *Workflow) GetTemplates() []Template {
+	return append(
+		w.GetExecSpec().Templates,
+		w.Status.GetStoredTemplates()...,
+	)
+}
+
 func (wf *Workflow) GetNodeByName(nodeName string) *NodeStatus {
 	nodeID := wf.NodeID(nodeName)
 	node, ok := wf.Status.Nodes[nodeID]
@@ -3280,10 +3271,6 @@ func resolveTemplateReference(callerScope ResourceScope, resourceName string, ca
 		return fmt.Sprintf("%s/%s/%s", referenceScope, tmplRef.Name, tmplRef.Template), true
 	} else if callerScope != ResourceScopeLocal {
 		// Either a WorkflowTemplate or a ClusterWorkflowTemplate is calling a template inside itself. Template storage is needed
-		if caller.GetTemplate() != nil {
-			// If we have an inlined template here, use the inlined name
-			return fmt.Sprintf("%s/%s/inline/%s", callerScope, resourceName, caller.GetName()), true
-		}
 		return fmt.Sprintf("%s/%s/%s", callerScope, resourceName, caller.GetTemplateName()), true
 	} else {
 		// A Workflow is calling a template inside itself. Template storage is not needed
