@@ -16,10 +16,15 @@ require (
 	github.com/spf13/viper v1.15.0
 	github.com/tbruyelle/hipchat-go v0.0.0-20160921153256-749fb9e14beb
 	gopkg.in/yaml.v2 v2.4.0
-	k8s.io/api v0.26.4
-	k8s.io/apimachinery v0.26.4
-	k8s.io/client-go v0.26.4
+	k8s.io/api v0.26.11
+	k8s.io/apimachinery v0.26.11
+	k8s.io/client-go v0.26.11
 	k8s.io/utils v0.0.0-20221107191617-1a15be271d1d
+)
+
+require (
+	google.golang.org/genproto/googleapis/api v0.0.0-20230525234020-1aefcd67740a // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20230525234030-28d5490b6b19 // indirect
 )
 
 require (
@@ -34,7 +39,7 @@ require (
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/stretchr/testify v1.8.4
 	go.uber.org/zap v1.21.0
-	google.golang.org/protobuf v1.30.0 // indirect
+	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	mellium.im/sasl v0.3.1 // indirect
 )
@@ -163,16 +168,16 @@ require (
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
 	golang.org/x/crypto v0.14.0 // indirect
-	golang.org/x/exp v0.0.0-20220602145555-4a0574d9293f // indirect
+	golang.org/x/exp v0.0.0-20220827204233-334a2380cb91 // indirect
 	golang.org/x/net v0.17.0 // indirect
 	golang.org/x/oauth2 v0.7.0 // indirect
-	golang.org/x/sync v0.1.0 // indirect
+	golang.org/x/sync v0.3.0 // indirect
 	golang.org/x/sys v0.13.0 // indirect
 	golang.org/x/term v0.13.0 // indirect
 	golang.org/x/text v0.13.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1 // indirect
+	google.golang.org/genproto v0.0.0-20230525234025-438c736192d0 // indirect
 	google.golang.org/grpc v1.56.3 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/jcmturner/aescts.v1 v1.0.1 // indirect
@@ -183,15 +188,15 @@ require (
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/apiextensions-apiserver v0.26.4 // indirect
-	k8s.io/apiserver v0.26.4 // indirect
+	k8s.io/apiserver v0.26.11 // indirect
 	k8s.io/cli-runtime v0.26.4 // indirect; indirØect
-	k8s.io/component-base v0.26.4 // indirect
+	k8s.io/component-base v0.26.11 // indirect
 	k8s.io/component-helpers v0.26.4 // indirect
 	k8s.io/klog/v2 v2.90.1 // indirect
 	k8s.io/kube-aggregator v0.24.2 // indirect
 	k8s.io/kube-openapi v0.0.0-20221012153701-172d655c2280 // indirect
 	k8s.io/kubectl v0.26.4 // indirect
-	k8s.io/kubernetes v1.26.4 // indirect
+	k8s.io/kubernetes v1.26.11 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/kustomize/api v0.12.1 // indirect
 	sigs.k8s.io/kustomize/kyaml v0.13.9 // indirect
@@ -204,7 +209,7 @@ replace (
 	k8s.io/api => k8s.io/api v0.26.4
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.26.4
 	k8s.io/apimachinery => k8s.io/apimachinery v0.26.4
-	k8s.io/apiserver => k8s.io/apiserver v0.26.4
+	k8s.io/apiserver => k8s.io/apiserver v0.26.11
 	k8s.io/cli-runtime => k8s.io/cli-runtime v0.26.4
 	k8s.io/client-go => k8s.io/client-go v0.26.4
 	k8s.io/cloud-provider => k8s.io/cloud-provider v0.24.2
