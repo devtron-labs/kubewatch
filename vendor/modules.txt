@@ -189,7 +189,7 @@ github.com/colinmarc/hdfs/rpc
 # github.com/davecgh/go-spew v1.1.1
 ## explicit
 github.com/davecgh/go-spew/spew
-# github.com/devtron-labs/common-lib v0.0.8-0.20231123112608-249244c62cbd
+# github.com/devtron-labs/common-lib v0.0.8-0.20231219072255-150c95034466
 ## explicit; go 1.20
 github.com/devtron-labs/common-lib/natsMetrics
 github.com/devtron-labs/common-lib/pubsub-lib
