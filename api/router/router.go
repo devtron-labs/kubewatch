@@ -26,7 +26,6 @@ type Response struct {
 }
 
 func (r *RouterImpl) Init() {
-	r.Router.StrictSlash(true)
 	r.Router.Handle("/metrics", promhttp.Handler())
 	r.Router.Path("/health").HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		writer.Header().Set("Content-Type", "application/json")
