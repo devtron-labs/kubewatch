@@ -65,7 +65,12 @@ func CreatePostGresDBSession(kubectlConfig kubernetes.Interface, namespace strin
 	if err != nil {
 		return nil, "", err
 	}
-	session = ConfigureDBSession(session, persistPool)
+
+	if persistPool != nil {
+		session.SetMaxOpenConns(persistPool.MaxOpenConns)
+		session.SetMaxIdleConns(persistPool.MaxIdleConns)
+		session.SetConnMaxLifetime(time.Duration(persistPool.ConnMaxLifetime))
+	}
 	return session, cfg.TableName, nil
 }
 
@@ -95,7 +100,12 @@ func CreateMySQLDBSession(kubectlConfig kubernetes.Interface, namespace string, 
 	if err != nil {
 		return nil, "", err
 	}
-	session = ConfigureDBSession(session, persistPool)
+
+	if persistPool != nil {
+		session.SetMaxOpenConns(persistPool.MaxOpenConns)
+		session.SetMaxIdleConns(persistPool.MaxIdleConns)
+		session.SetConnMaxLifetime(time.Duration(persistPool.ConnMaxLifetime))
+	}
 	// this is needed to make MySQL run in a Golang-compatible UTF-8 character set.
 	_, err = session.Exec("SET NAMES 'utf8mb4'")
 	if err != nil {
@@ -106,14 +116,4 @@ func CreateMySQLDBSession(kubectlConfig kubernetes.Interface, namespace string, 
 		return nil, "", err
 	}
 	return session, cfg.TableName, nil
-}
-
-// ConfigureDBSession configures the DB session
-func ConfigureDBSession(session sqlbuilder.Database, persistPool *config.ConnectionPool) sqlbuilder.Database {
-	if persistPool != nil {
-		session.SetMaxOpenConns(persistPool.MaxOpenConns)
-		session.SetMaxIdleConns(persistPool.MaxIdleConns)
-		session.SetConnMaxLifetime(time.Duration(persistPool.ConnMaxLifetime))
-	}
-	return session
 }

@@ -16,11 +16,6 @@ import (
 	pathutil "github.com/argoproj/argo-cd/v2/util/io/path"
 )
 
-const (
-	ResourcePolicyAnnotation = "helm.sh/resource-policy"
-	ResourcePolicyKeep       = "keep"
-)
-
 type HelmRepository struct {
 	Creds
 	Name      string
