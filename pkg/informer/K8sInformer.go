@@ -21,7 +21,6 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/utils/pointer"
 	"log"
-	"runtime/debug"
 	"sort"
 	"strconv"
 	"sync"
@@ -249,19 +248,6 @@ func (impl *K8sInformerImpl) syncSystemWorkflowInformer(clusterId int) error {
 	return nil
 }
 
-func withRecover(fn func(oldObj, newObj interface{})) func(oldObj, newObj interface{}) {
-
-	return func(oldObj, newObj interface{}) {
-		defer func() {
-			err := recover()
-			if err != nil {
-				log.Print("recovered from panic", "err", err, "stack", string(debug.Stack()))
-			}
-		}()
-		fn(oldObj, newObj)
-	}
-}
-
 func (impl *K8sInformerImpl) stopSystemWorkflowInformer(clusterId int) {
 	stopper := impl.informerStopper[clusterId]
 	if stopper != nil {
@@ -296,7 +282,7 @@ func (impl *K8sInformerImpl) startSystemWorkflowInformer(clusterId int) error {
 	stopper := make(chan struct{})
 	podInformer := informerFactory.Core().V1().Pods()
 	podInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		UpdateFunc: withRecover(func(oldObj, newObj interface{}) {
+		UpdateFunc: func(oldObj, newObj interface{}) {
 
 			if podObj, ok := newObj.(*coreV1.Pod); ok {
 
@@ -321,7 +307,7 @@ func (impl *K8sInformerImpl) startSystemWorkflowInformer(clusterId int) error {
 				}
 				impl.logger.Debug("cd workflow update sent")
 			}
-		}),
+		},
 
 		DeleteFunc: func(newObj interface{}) {
 			if podObj, ok := newObj.(*coreV1.Pod); ok {
