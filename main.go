@@ -17,7 +17,6 @@ limitations under the License.
 package main
 
 import (
-	"github.com/devtron-labs/kubewatch/cmd"
 	"log"
 )
 
@@ -26,6 +25,6 @@ func main() {
 	if err != nil {
 		log.Panic(err)
 	}
-	go app.Start()
-	cmd.Execute()
+	app.Start()
+	//cmd.Execute()
 }

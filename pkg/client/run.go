@@ -18,6 +18,7 @@ package client
 
 import (
 	"log"
+	"runtime/debug"
 
 	"github.com/devtron-labs/kubewatch/config"
 	"github.com/devtron-labs/kubewatch/pkg/controller"
@@ -50,5 +51,13 @@ func Run(conf *config.Config) {
 	if err := eventHandler.Init(conf); err != nil {
 		log.Fatal(err)
 	}
+
+	defer func() {
+		err := recover()
+		if err != nil {
+			log.Print("recovered from panic", "err", err, "stack", string(debug.Stack()))
+		}
+	}()
+
 	controller.Start(conf, eventHandler)
 }
