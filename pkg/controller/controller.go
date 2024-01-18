@@ -110,7 +110,8 @@ type CdConfig struct {
 	CdInformer       bool   `env:"CD_INFORMER" envDefault:"true"`
 }
 
-type ExternalCdConfig struct {
+// This is being used by CI as well as CD
+type ExternalConfig struct {
 	External    bool   `env:"CD_EXTERNAL_REST_LISTENER" envDefault:"false"`
 	Token       string `env:"CD_EXTERNAL_ORCHESTRATOR_TOKEN" envDefault:""`
 	ListenerUrl string `env:"CD_EXTERNAL_LISTENER_URL" envDefault:"http://devtroncd-orchestrator-service-prod.devtroncd:80"`
@@ -141,8 +142,8 @@ var client *pubsub.PubSubClientServiceImpl
 func Start(conf *config.Config, eventHandler handlers.Handler) {
 	logger := logger.NewSugaredLogger()
 	cfg, _ := utils.GetDefaultK8sConfig("kubeconfig")
-	externalCD := &ExternalCdConfig{}
-	err := env.Parse(externalCD)
+	externalConfig := &ExternalConfig{}
+	err := env.Parse(externalConfig)
 	if err != nil {
 		logger.Fatal("error occurred while parsing external cd config", err)
 	}
@@ -162,15 +163,20 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 		logger.Fatal("error occurred while parsing ci config", err)
 	}
 	var namespace string
+	clusterCfg := &ClusterConfig{}
+	err = env.Parse(clusterCfg)
+	if !externalConfig.External {
+		client = pubsub.NewPubSubClientServiceImpl(logger)
+	}
 	if ciCfg.CiInformer {
-		if externalCD.External {
-			namespace = externalCD.Namespace
+		if externalConfig.External {
+			namespace = externalConfig.Namespace
 		} else {
 			namespace = ciCfg.DefaultNamespace
 		}
 		stopCh := make(chan struct{})
 		defer close(stopCh)
-		startWorkflowInformer(namespace, logger, pubsub.WORKFLOW_STATUS_UPDATE_TOPIC, stopCh, dynamicClient, externalCD)
+		startWorkflowInformer(namespace, logger, pubsub.WORKFLOW_STATUS_UPDATE_TOPIC, stopCh, dynamicClient, externalConfig)
 	}
 
 	///-------------------
@@ -180,28 +186,25 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 		logger.Fatal("error occurred while parsing cd config", err)
 	}
 	if cdCfg.CdInformer {
-		if externalCD.External {
-			namespace = externalCD.Namespace
+		if externalConfig.External {
+			namespace = externalConfig.Namespace
 		} else {
 			namespace = cdCfg.DefaultNamespace
 		}
-		clusterCfg := &ClusterConfig{}
-		err = env.Parse(clusterCfg)
-		if clusterCfg.ClusterType == ClusterTypeAll && !externalCD.External {
-			startSystemWorkflowInformer(logger)
-		}
 		stopCh := make(chan struct{})
 		defer close(stopCh)
-		startWorkflowInformer(namespace, logger, pubsub.CD_WORKFLOW_STATUS_UPDATE, stopCh, dynamicClient, externalCD)
+		startWorkflowInformer(namespace, logger, pubsub.CD_WORKFLOW_STATUS_UPDATE, stopCh, dynamicClient, externalConfig)
 	}
-
+	if clusterCfg.ClusterType == ClusterTypeAll && !externalConfig.External {
+		startSystemWorkflowInformer(logger)
+	}
 	acdCfg := &AcdConfig{}
 	err = env.Parse(acdCfg)
 	if err != nil {
 		return
 	}
 
-	if acdCfg.ACDInformer && !externalCD.External {
+	if acdCfg.ACDInformer && !externalConfig.External {
 		logger.Info("starting acd informer")
 		clientset := versioned2.NewForConfigOrDie(cfg)
 		acdInformer := appinformers.NewApplicationInformer(clientset, acdCfg.ACDNamespace, 0, cache.Indexers{})
@@ -271,13 +274,10 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 	<-sigterm
 }
 
-func startWorkflowInformer(namespace string, logger *zap.SugaredLogger, eventName string, stopCh chan struct{}, dynamicClient dynamic.Interface, externalCD *ExternalCdConfig) {
+func startWorkflowInformer(namespace string, logger *zap.SugaredLogger, eventName string, stopCh chan struct{}, dynamicClient dynamic.Interface, externalCD *ExternalConfig) {
 
 	workflowInformer := util2.NewWorkflowInformer(dynamicClient, namespace, 0, nil, cache.Indexers{})
 	logger.Debugw("NewWorkflowInformer", "workflowInformer", workflowInformer)
-	if !externalCD.External {
-		client = pubsub.NewPubSubClientServiceImpl(logger)
-	}
 	workflowInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {},
 		UpdateFunc: func(oldWf, newWf interface{}) {
@@ -330,7 +330,7 @@ type PublishRequest struct {
 	Payload json.RawMessage `json:"payload"`
 }
 
-func PublishEventsOnRest(jsonBody []byte, topic string, externalCdConfig *ExternalCdConfig) error {
+func PublishEventsOnRest(jsonBody []byte, topic string, externalCdConfig *ExternalConfig) error {
 	publishRequest := &PublishRequest{
 		Topic:   topic,
 		Payload: jsonBody,
