@@ -71,7 +71,6 @@ type Client interface {
 	CommitSHA() (string, error)
 	RevisionMetadata(revision string) (*RevisionMetadata, error)
 	VerifyCommitSignature(string) (string, error)
-	IsAnnotatedTag(string) bool
 }
 
 type EventHandlers struct {
@@ -99,11 +98,6 @@ type nativeGitClient struct {
 	loadRefFromCache bool
 	// HTTP/HTTPS proxy used to access repository
 	proxy string
-}
-
-type runOpts struct {
-	SkipErrorLogging bool
-	CaptureStderr    bool
 }
 
 var (
@@ -623,28 +617,17 @@ func (m *nativeGitClient) VerifyCommitSignature(revision string) (string, error)
 	return out, nil
 }
 
-// IsAnnotatedTag returns true if the revision points to an annotated tag
-func (m *nativeGitClient) IsAnnotatedTag(revision string) bool {
-	cmd := exec.Command("git", "describe", "--exact-match", revision)
-	out, err := m.runCmdOutput(cmd, runOpts{SkipErrorLogging: true})
-	if out != "" && err == nil {
-		return true
-	} else {
-		return false
-	}
-}
-
 // runWrapper runs a custom command with all the semantics of running the Git client
 func (m *nativeGitClient) runGnuPGWrapper(wrapper string, args ...string) (string, error) {
 	cmd := exec.Command(wrapper, args...)
 	cmd.Env = append(cmd.Env, fmt.Sprintf("GNUPGHOME=%s", common.GetGnuPGHomePath()), "LANG=C")
-	return m.runCmdOutput(cmd, runOpts{})
+	return m.runCmdOutput(cmd)
 }
 
 // runCmd is a convenience function to run a command in a given directory and return its output
 func (m *nativeGitClient) runCmd(args ...string) (string, error) {
 	cmd := exec.Command("git", args...)
-	return m.runCmdOutput(cmd, runOpts{})
+	return m.runCmdOutput(cmd)
 }
 
 // runCredentialedCmd is a convenience function to run a git command with username/password credentials
@@ -666,11 +649,11 @@ func (m *nativeGitClient) runCredentialedCmd(command string, args ...string) err
 
 	cmd := exec.Command(command, args...)
 	cmd.Env = append(cmd.Env, environ...)
-	_, err = m.runCmdOutput(cmd, runOpts{})
+	_, err = m.runCmdOutput(cmd)
 	return err
 }
 
-func (m *nativeGitClient) runCmdOutput(cmd *exec.Cmd, ropts runOpts) (string, error) {
+func (m *nativeGitClient) runCmdOutput(cmd *exec.Cmd) (string, error) {
 	cmd.Dir = m.root
 	cmd.Env = append(os.Environ(), cmd.Env...)
 	// Set $HOME to nowhere, so we can be execute Git regardless of any external
@@ -708,8 +691,6 @@ func (m *nativeGitClient) runCmdOutput(cmd *exec.Cmd, ropts runOpts) (string, er
 			Signal:     syscall.SIGTERM,
 			ShouldWait: true,
 		},
-		SkipErrorLogging: ropts.SkipErrorLogging,
-		CaptureStderr:    ropts.CaptureStderr,
 	}
 	return executil.RunWithExecRunOpts(cmd, opts)
 }
