@@ -20,6 +20,7 @@ import (
 	"log"
 	"runtime/debug"
 
+	"github.com/devtron-labs/common-lib/constants"
 	"github.com/devtron-labs/kubewatch/config"
 	"github.com/devtron-labs/kubewatch/pkg/controller"
 	"github.com/devtron-labs/kubewatch/pkg/handlers"
@@ -55,7 +56,7 @@ func Run(conf *config.Config) {
 	defer func() {
 		err := recover()
 		if err != nil {
-			log.Print("recovered from panic", "err", err, "stack", string(debug.Stack()))
+			log.Print(constants.PanicLogIdentifier+"recovered from panic", "err", err, "stack", string(debug.Stack()))
 		}
 	}()
 
