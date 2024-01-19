@@ -279,7 +279,7 @@ func (c SSHCreds) Environ() (io.Closer, []string, error) {
 		if err = file.Close(); err != nil {
 			log.WithFields(log.Fields{
 				common.SecurityField:    common.SecurityMedium,
-				common.SecurityCWEField: common.SecurityCWEMissingReleaseOfFileDescriptor,
+				common.SecurityCWEField: 775,
 			}).Errorf("error closing file %q: %v", file.Name(), err)
 		}
 	}()

@@ -61,7 +61,7 @@ github.com/antonmedv/expr/parser
 github.com/antonmedv/expr/parser/lexer
 github.com/antonmedv/expr/vm
 github.com/antonmedv/expr/vm/runtime
-# github.com/argoproj/argo-cd/v2 v2.7.14
+# github.com/argoproj/argo-cd/v2 v2.7.2
 ## explicit; go 1.19
 github.com/argoproj/argo-cd/v2/common
 github.com/argoproj/argo-cd/v2/pkg/apis/application
@@ -128,7 +128,7 @@ github.com/argoproj/argo-workflows/v3/workflow/packer
 github.com/argoproj/argo-workflows/v3/workflow/templateresolution
 github.com/argoproj/argo-workflows/v3/workflow/util
 github.com/argoproj/argo-workflows/v3/workflow/validate
-# github.com/argoproj/gitops-engine v0.7.1-0.20230526233214-ad9a694fe4bc
+# github.com/argoproj/gitops-engine v0.7.1-0.20230214165351-ed70eac8b7bd
 ## explicit; go 1.17
 github.com/argoproj/gitops-engine/internal/kubernetes_vendor/pkg/api/v1/endpoints
 github.com/argoproj/gitops-engine/internal/kubernetes_vendor/pkg/util/hash
@@ -143,7 +143,7 @@ github.com/argoproj/gitops-engine/pkg/utils/kube
 github.com/argoproj/gitops-engine/pkg/utils/kube/scheme
 github.com/argoproj/gitops-engine/pkg/utils/text
 github.com/argoproj/gitops-engine/pkg/utils/tracing
-# github.com/argoproj/pkg v0.13.7-0.20230627120311-a4dd357b057e
+# github.com/argoproj/pkg v0.13.7-0.20221221191914-44694015343d
 ## explicit; go 1.14
 github.com/argoproj/pkg/exec
 github.com/argoproj/pkg/expr
@@ -152,9 +152,17 @@ github.com/argoproj/pkg/json
 github.com/argoproj/pkg/rand
 github.com/argoproj/pkg/sync
 github.com/argoproj/pkg/time
+# github.com/arl/statsviz v0.6.0
+## explicit; go 1.20
+github.com/arl/statsviz
+github.com/arl/statsviz/internal/plot
+github.com/arl/statsviz/internal/static
 # github.com/beorn7/perks v1.0.1
 ## explicit; go 1.11
 github.com/beorn7/perks/quantile
+# github.com/blang/semver/v4 v4.0.0
+## explicit; go 1.14
+github.com/blang/semver/v4
 # github.com/bombsimon/logrusr/v2 v2.0.1
 ## explicit; go 1.13
 github.com/bombsimon/logrusr/v2
@@ -196,8 +204,12 @@ github.com/colinmarc/hdfs/rpc
 # github.com/davecgh/go-spew v1.1.1
 ## explicit
 github.com/davecgh/go-spew/spew
-# github.com/devtron-labs/common-lib v0.0.9-0.20231226070212-c47f7a07ebf5
+# github.com/devtron-labs/common-lib v0.0.10-0.20240119124817-22edd78beee8
 ## explicit; go 1.20
+github.com/devtron-labs/common-lib/constants
+github.com/devtron-labs/common-lib/monitoring
+github.com/devtron-labs/common-lib/monitoring/pprof
+github.com/devtron-labs/common-lib/monitoring/statsViz
 github.com/devtron-labs/common-lib/pubsub-lib
 github.com/devtron-labs/common-lib/pubsub-lib/metrics
 github.com/devtron-labs/common-lib/pubsub-lib/model
@@ -434,7 +446,7 @@ github.com/huandu/xstrings
 # github.com/imdario/mergo v0.3.13
 ## explicit; go 1.13
 github.com/imdario/mergo
-# github.com/inconshreveable/mousetrap v1.1.0
+# github.com/inconshreveable/mousetrap v1.0.1
 ## explicit; go 1.18
 github.com/inconshreveable/mousetrap
 # github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99
@@ -611,7 +623,7 @@ github.com/sergi/go-diff/diffmatchpatch
 # github.com/shopspring/decimal v1.2.0
 ## explicit; go 1.13
 github.com/shopspring/decimal
-# github.com/sirupsen/logrus v1.9.3
+# github.com/sirupsen/logrus v1.9.0
 ## explicit; go 1.13
 github.com/sirupsen/logrus
 # github.com/skeema/knownhosts v1.1.0
@@ -625,7 +637,7 @@ github.com/spf13/afero/mem
 # github.com/spf13/cast v1.5.0
 ## explicit; go 1.18
 github.com/spf13/cast
-# github.com/spf13/cobra v1.7.0
+# github.com/spf13/cobra v1.6.1
 ## explicit; go 1.15
 github.com/spf13/cobra
 # github.com/spf13/jwalterweatherman v1.1.0
@@ -730,7 +742,7 @@ golang.org/x/crypto/ssh
 golang.org/x/crypto/ssh/agent
 golang.org/x/crypto/ssh/internal/bcrypt_pbkdf
 golang.org/x/crypto/ssh/knownhosts
-# golang.org/x/exp v0.0.0-20220827204233-334a2380cb91
+# golang.org/x/exp v0.0.0-20220602145555-4a0574d9293f
 ## explicit; go 1.18
 golang.org/x/exp/maps
 # golang.org/x/net v0.17.0
@@ -1294,13 +1306,17 @@ k8s.io/client-go/util/homedir
 k8s.io/client-go/util/jsonpath
 k8s.io/client-go/util/keyutil
 k8s.io/client-go/util/workqueue
-# k8s.io/component-base v0.26.11 => k8s.io/component-base v0.24.2
-## explicit; go 1.16
+# k8s.io/component-base v0.26.11 => k8s.io/component-base v0.26.4
+## explicit; go 1.19
 k8s.io/component-base/cli/flag
 k8s.io/component-base/featuregate
+k8s.io/component-base/metrics
+k8s.io/component-base/metrics/legacyregistry
+k8s.io/component-base/metrics/prometheus/feature
+k8s.io/component-base/metrics/prometheusextension
 k8s.io/component-base/version
-# k8s.io/component-helpers v0.26.4 => k8s.io/component-helpers v0.24.2
-## explicit; go 1.16
+# k8s.io/component-helpers v0.26.4 => k8s.io/component-helpers v0.26.4
+## explicit; go 1.19
 k8s.io/component-helpers/auth/rbac/reconciliation
 k8s.io/component-helpers/auth/rbac/validation
 # k8s.io/klog/v2 v2.100.1
@@ -1312,8 +1328,8 @@ k8s.io/klog/v2/internal/dbg
 k8s.io/klog/v2/internal/serialize
 k8s.io/klog/v2/internal/severity
 k8s.io/klog/v2/klogr
-# k8s.io/kube-aggregator v0.24.2 => k8s.io/kube-aggregator v0.24.2
-## explicit; go 1.16
+# k8s.io/kube-aggregator v0.26.4 => k8s.io/kube-aggregator v0.26.4
+## explicit; go 1.19
 k8s.io/kube-aggregator/pkg/apis/apiregistration
 k8s.io/kube-aggregator/pkg/apis/apiregistration/v1
 k8s.io/kube-aggregator/pkg/apis/apiregistration/v1beta1
@@ -1603,22 +1619,22 @@ upper.io/db.v3/postgresql
 # k8s.io/apiserver => k8s.io/apiserver v0.26.11
 # k8s.io/cli-runtime => k8s.io/cli-runtime v0.26.4
 # k8s.io/client-go => k8s.io/client-go v0.26.4
-# k8s.io/cloud-provider => k8s.io/cloud-provider v0.24.2
-# k8s.io/cluster-bootstrap => k8s.io/cluster-bootstrap v0.24.2
+# k8s.io/cloud-provider => k8s.io/cloud-provider v0.26.4
+# k8s.io/cluster-bootstrap => k8s.io/cluster-bootstrap v0.26.4
 # k8s.io/code-generator => k8s.io/code-generator v0.24.2
-# k8s.io/component-base => k8s.io/component-base v0.24.2
-# k8s.io/component-helpers => k8s.io/component-helpers v0.24.2
-# k8s.io/controller-manager => k8s.io/controller-manager v0.24.2
-# k8s.io/cri-api => k8s.io/cri-api v0.24.2
-# k8s.io/csi-translation-lib => k8s.io/csi-translation-lib v0.24.2
-# k8s.io/kube-aggregator => k8s.io/kube-aggregator v0.24.2
-# k8s.io/kube-controller-manager => k8s.io/kube-controller-manager v0.24.2
-# k8s.io/kube-proxy => k8s.io/kube-proxy v0.24.2
-# k8s.io/kube-scheduler => k8s.io/kube-scheduler v0.24.2
+# k8s.io/component-base => k8s.io/component-base v0.26.4
+# k8s.io/component-helpers => k8s.io/component-helpers v0.26.4
+# k8s.io/controller-manager => k8s.io/controller-manager v0.26.4
+# k8s.io/cri-api => k8s.io/cri-api v0.26.4
+# k8s.io/csi-translation-lib => k8s.io/csi-translation-lib v0.26.4
+# k8s.io/kube-aggregator => k8s.io/kube-aggregator v0.26.4
+# k8s.io/kube-controller-manager => k8s.io/kube-controller-manager v0.26.4
+# k8s.io/kube-proxy => k8s.io/kube-proxy v0.26.4
+# k8s.io/kube-scheduler => k8s.io/kube-scheduler v0.26.4
 # k8s.io/kubectl => k8s.io/kubectl v0.26.4
 # k8s.io/kubelet => k8s.io/kubelet v0.26.4
-# k8s.io/legacy-cloud-providers => k8s.io/legacy-cloud-providers v0.24.2
-# k8s.io/metrics => k8s.io/metrics v0.24.2
-# k8s.io/mount-utils => k8s.io/mount-utils v0.24.2
-# k8s.io/pod-security-admission => k8s.io/pod-security-admission v0.24.2
-# k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.24.2
+# k8s.io/legacy-cloud-providers => k8s.io/legacy-cloud-providers v0.26.4
+# k8s.io/metrics => k8s.io/metrics v0.26.4
+# k8s.io/mount-utils => k8s.io/mount-utils v0.26.4
+# k8s.io/pod-security-admission => k8s.io/pod-security-admission v0.26.4
+# k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.26.4
