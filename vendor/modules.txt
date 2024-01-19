@@ -204,7 +204,7 @@ github.com/colinmarc/hdfs/rpc
 # github.com/davecgh/go-spew v1.1.1
 ## explicit
 github.com/davecgh/go-spew/spew
-# github.com/devtron-labs/common-lib v0.0.10-0.20240118094125-5f5b506c6907
+# github.com/devtron-labs/common-lib v0.0.10-0.20240119124817-22edd78beee8
 ## explicit; go 1.20
 github.com/devtron-labs/common-lib/constants
 github.com/devtron-labs/common-lib/monitoring
