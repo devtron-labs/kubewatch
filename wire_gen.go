@@ -7,6 +7,7 @@
 package main
 
 import (
+	"github.com/devtron-labs/common-lib/monitoring"
 	"github.com/devtron-labs/kubewatch/api/router"
 	"github.com/devtron-labs/kubewatch/pkg/logger"
 )
@@ -15,7 +16,8 @@ import (
 
 func InitializeApp() (*App, error) {
 	sugaredLogger := logger.NewSugaredLogger()
-	routerImpl := api.NewRouter(sugaredLogger)
+	monitoringRouter := monitoring.NewMonitoringRouter(sugaredLogger)
+	routerImpl := api.NewRouter(sugaredLogger, monitoringRouter)
 	app := NewApp(routerImpl, sugaredLogger)
 	return app, nil
 }

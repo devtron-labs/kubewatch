@@ -2,20 +2,23 @@ package api
 
 import (
 	"encoding/json"
+	"github.com/devtron-labs/common-lib/monitoring"
 	"github.com/gorilla/mux"
 	"go.uber.org/zap"
 	"net/http"
 )
 
 type RouterImpl struct {
-	logger *zap.SugaredLogger
-	Router *mux.Router
+	logger           *zap.SugaredLogger
+	Router           *mux.Router
+	monitoringRouter *monitoring.MonitoringRouter
 }
 
-func NewRouter(logger *zap.SugaredLogger) *RouterImpl {
+func NewRouter(logger *zap.SugaredLogger, monitoringRouter *monitoring.MonitoringRouter) *RouterImpl {
 	return &RouterImpl{
-		logger: logger,
-		Router: mux.NewRouter(),
+		logger:           logger,
+		Router:           mux.NewRouter(),
+		monitoringRouter: monitoringRouter,
 	}
 }
 
@@ -25,6 +28,12 @@ type Response struct {
 }
 
 func (r *RouterImpl) Init() {
+
+	pProfListenerRouter := r.Router.PathPrefix("/kubewatch/debug/pprof/").Subrouter()
+	statsVizRouter := r.Router.PathPrefix("/kubewatch").Subrouter()
+
+	r.monitoringRouter.InitMonitoringRouter(pProfListenerRouter, statsVizRouter, "/kubewatch")
+
 	r.Router.Path("/health").HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		writer.Header().Set("Content-Type", "application/json")
 		writer.WriteHeader(200)
