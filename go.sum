@@ -72,8 +72,8 @@ github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be h1:9AeTilPcZAjCFI
 github.com/antihax/optional v1.0.0/go.mod h1:uupD/76wgC+ih3iEmQUL+0Ugr19nfwCT1kdvxnR2qWY=
 github.com/antonmedv/expr v1.12.5 h1:Fq4okale9swwL3OeLLs9WD9H6GbgBLJyN/NUHRv+n0E=
 github.com/antonmedv/expr v1.12.5/go.mod h1:FPC8iWArxls7axbVLsW+kpg1mz29A1b2M6jt+hZfDkU=
-github.com/argoproj/argo-cd/v2 v2.8.12 h1:C/pXS1jkB3W7TV6DYhexUZROeAANbmhNZUExVY0FwyM=
-github.com/argoproj/argo-cd/v2 v2.8.12/go.mod h1:3GmH9xEJtiWZNfZ5hx1qdzbF2t9gIS/3vNV5vJBmI/g=
+github.com/argoproj/argo-cd/v2 v2.8.13 h1:DrKWdEGVOwiyC4zgS7vB9ngP16xumA6x5/AgN/stJw0=
+github.com/argoproj/argo-cd/v2 v2.8.13/go.mod h1:3GmH9xEJtiWZNfZ5hx1qdzbF2t9gIS/3vNV5vJBmI/g=
 github.com/argoproj/argo-workflows/v3 v3.4.7 h1:jtJtlaJArdgnHBxm3Ue6lt/mrzpPF99K3MMC/vY4TWg=
 github.com/argoproj/argo-workflows/v3 v3.4.7/go.mod h1:qI55HmnDc2pFNItTPGQnasF96MP9fOyLT/CCClK4tqg=
 github.com/argoproj/gitops-engine v0.7.1-0.20230607163028-425d65e07695 h1:w8OPbqHyhWxLyC4LZgs5JBUe7AOkJpNZqFa92yy7Kmc=

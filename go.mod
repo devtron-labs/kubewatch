@@ -3,7 +3,7 @@ module github.com/devtron-labs/kubewatch
 go 1.20
 
 require (
-	github.com/argoproj/argo-cd/v2 v2.8.12
+	github.com/argoproj/argo-cd/v2 v2.8.13
 	github.com/argoproj/argo-workflows/v3 v3.4.7
 	github.com/argoproj/gitops-engine v0.7.1-0.20230607163028-425d65e07695
 	github.com/caarlos0/env v3.5.0+incompatible
