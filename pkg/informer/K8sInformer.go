@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
 	"github.com/argoproj/argo-workflows/v3/workflow/common"
-	"github.com/argoproj/gitops-engine/pkg/utils/kube"
 	pubsub "github.com/devtron-labs/common-lib/pubsub-lib"
 	repository "github.com/devtron-labs/kubewatch/pkg/cluster"
 	"github.com/devtron-labs/kubewatch/pkg/utils"
@@ -45,6 +44,7 @@ const (
 	CI_WORKFLOW_NAME                 = "ci"
 	CD_WORKFLOW_NAME                 = "cd"
 	WORKFLOW_TYPE_LABEL_KEY          = "workflowType"
+	JobKind                          = "Job"
 )
 
 type K8sInformer interface {
@@ -607,7 +607,7 @@ func (impl *K8sInformerImpl) getWorkflowStatus(podObj *coreV1.Pod, nodeStatus v1
 func (impl *K8sInformerImpl) getPodOwnerName(podObj *coreV1.Pod) string {
 	ownerReferences := podObj.OwnerReferences
 	for _, ownerReference := range ownerReferences {
-		if ownerReference.Kind == kube.JobKind {
+		if ownerReference.Kind == JobKind {
 			return ownerReference.Name
 		}
 	}

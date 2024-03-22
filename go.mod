@@ -5,7 +5,6 @@ go 1.20
 require (
 	github.com/argoproj/argo-cd/v2 v2.8.13
 	github.com/argoproj/argo-workflows/v3 v3.4.7
-	github.com/argoproj/gitops-engine v0.7.1-0.20230607163028-425d65e07695
 	github.com/caarlos0/env v3.5.0+incompatible
 	github.com/go-pg/pg v6.15.1+incompatible
 	github.com/go-resty/resty/v2 v2.7.0
@@ -65,6 +64,7 @@ require (
 	github.com/Microsoft/go-winio v0.6.1 // indirect
 	github.com/ProtonMail/go-crypto v0.0.0-20230828082145-3c4c8a2d2371 // indirect
 	github.com/antonmedv/expr v1.12.5 // indirect
+	github.com/argoproj/gitops-engine v0.7.1-0.20230607163028-425d65e07695 // indirect
 	github.com/argoproj/pkg v0.13.7-0.20230626144333-d56162821bd1 // indirect
 	github.com/arl/statsviz v0.6.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
