@@ -53,12 +53,7 @@ func (app *App) Stop() {
 	}
 
 	// Gracefully stop all Kubernetes informers
-	for clusterID, stopper := range app.K8sInformerImpl.InformerStopper {
-		if stopper != nil {
-			close(stopper)
-			delete(app.K8sInformerImpl.InformerStopper, clusterID)
-		}
-	}
+	app.K8sInformerImpl.StopAllSystemWorkflowInformer()
 
 	app.Logger.Infow("closing db connection")
 	err = app.db.Close()
