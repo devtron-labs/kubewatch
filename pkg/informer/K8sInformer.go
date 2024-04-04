@@ -247,7 +247,6 @@ func (impl *K8sInformerImpl) syncSystemWorkflowInformer(clusterId int) error {
 	return nil
 }
 
-// todo
 func (impl *K8sInformerImpl) stopSystemWorkflowInformer(clusterId int) {
 	stopper := impl.informerStopper[clusterId]
 	if stopper != nil {
