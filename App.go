@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	api "github.com/devtron-labs/kubewatch/api/router"
+	"github.com/devtron-labs/kubewatch/pkg/informer"
 	"github.com/go-pg/pg"
 	"go.uber.org/zap"
 	"net/http"
@@ -12,17 +13,19 @@ import (
 )
 
 type App struct {
-	MuxRouter *api.RouterImpl
-	Logger    *zap.SugaredLogger
-	server    *http.Server
-	db        *pg.DB
+	MuxRouter       *api.RouterImpl
+	Logger          *zap.SugaredLogger
+	server          *http.Server
+	db              *pg.DB
+	K8sInformerImpl *informer.K8sInformerImpl
 }
 
-func NewApp(MuxRouter *api.RouterImpl, Logger *zap.SugaredLogger, db *pg.DB) *App {
+func NewApp(MuxRouter *api.RouterImpl, Logger *zap.SugaredLogger, db *pg.DB, K8sInformerImpl *informer.K8sInformerImpl) *App {
 	return &App{
-		MuxRouter: MuxRouter,
-		Logger:    Logger,
-		db:        db,
+		MuxRouter:       MuxRouter,
+		Logger:          Logger,
+		db:              db,
+		K8sInformerImpl: K8sInformerImpl,
 	}
 }
 func (app *App) Start() {
@@ -47,6 +50,14 @@ func (app *App) Stop() {
 	err := app.server.Shutdown(timeoutContext)
 	if err != nil {
 		app.Logger.Errorw("error in mux router shutdown", "err", err)
+	}
+
+	// Gracefully stop all Kubernetes informers
+	for clusterID, stopper := range app.K8sInformerImpl.InformerStopper {
+		if stopper != nil {
+			close(stopper)
+			delete(app.K8sInformerImpl.InformerStopper, clusterID)
+		}
 	}
 
 	app.Logger.Infow("closing db connection")

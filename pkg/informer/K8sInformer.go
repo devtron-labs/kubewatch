@@ -54,7 +54,7 @@ type K8sInformer interface {
 type K8sInformerImpl struct {
 	logger            *zap.SugaredLogger
 	mutex             sync.Mutex
-	informerStopper   map[int]chan struct{}
+	InformerStopper   map[int]chan struct{}
 	clusterRepository repository.ClusterRepository
 	DefaultK8sConfig  *rest.Config
 	pubSubClient      *pubsub.PubSubClientServiceImpl
@@ -68,7 +68,7 @@ func NewK8sInformerImpl(logger *zap.SugaredLogger, clusterRepository repository.
 	}
 	defaultK8sConfig, _ := utils.GetDefaultK8sConfig("kubeconfigK8s")
 	informerFactory.DefaultK8sConfig = defaultK8sConfig
-	informerFactory.informerStopper = make(map[int]chan struct{})
+	informerFactory.InformerStopper = make(map[int]chan struct{})
 	return informerFactory
 }
 
@@ -249,10 +249,10 @@ func (impl *K8sInformerImpl) syncSystemWorkflowInformer(clusterId int) error {
 
 // todo
 func (impl *K8sInformerImpl) stopSystemWorkflowInformer(clusterId int) {
-	stopper := impl.informerStopper[clusterId]
+	stopper := impl.InformerStopper[clusterId]
 	if stopper != nil {
 		close(stopper)
-		delete(impl.informerStopper, clusterId)
+		delete(impl.InformerStopper, clusterId)
 	}
 	return
 }
@@ -265,7 +265,7 @@ func (impl *K8sInformerImpl) startSystemWorkflowInformer(clusterId int) error {
 		return err
 	}
 
-	if _, ok := impl.informerStopper[clusterId]; ok {
+	if _, ok := impl.InformerStopper[clusterId]; ok {
 		impl.logger.Debug(fmt.Sprintf("informer for %s already exist", clusterInfo.ClusterName))
 		return errors.New(INFORMER_ALREADY_EXIST_MESSAGE)
 	}
@@ -361,7 +361,7 @@ func (impl *K8sInformerImpl) startSystemWorkflowInformer(clusterId int) error {
 	})
 	informerFactory.Start(stopper)
 	impl.logger.Infow("informer started for cluster", "clusterId", clusterInfo.Id, "clusterName", clusterInfo.ClusterName)
-	impl.informerStopper[clusterId] = stopper
+	impl.InformerStopper[clusterId] = stopper
 	return nil
 }
 
