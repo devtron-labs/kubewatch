@@ -196,7 +196,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 		startWorkflowInformer(namespace, logger, pubsub.CD_WORKFLOW_STATUS_UPDATE, stopCh, dynamicClient, externalConfig)
 	}
 	if clusterCfg.ClusterType == ClusterTypeAll && !externalConfig.External {
-		startSystemWorkflowInformer(logger)
+		StartSystemWorkflowInformer(logger)
 	}
 	acdCfg := &AcdConfig{}
 	err = env.Parse(acdCfg)
@@ -313,7 +313,7 @@ func startWorkflowInformer(namespace string, logger *zap.SugaredLogger, eventNam
 
 }
 
-func startSystemWorkflowInformer(logger *zap.SugaredLogger) error {
+func StartSystemWorkflowInformer(logger *zap.SugaredLogger) error {
 	config, _ := sql.GetConfig()
 	connection, err := sql.NewDbConnection(config, logger)
 	if err != nil {

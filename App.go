@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	api "github.com/devtron-labs/kubewatch/api/router"
-	"github.com/devtron-labs/kubewatch/pkg/informer"
-	"github.com/go-pg/pg"
 	"go.uber.org/zap"
 	"net/http"
 	"os"
@@ -13,19 +11,15 @@ import (
 )
 
 type App struct {
-	MuxRouter       *api.RouterImpl
-	Logger          *zap.SugaredLogger
-	server          *http.Server
-	db              *pg.DB
-	K8sInformerImpl *informer.K8sInformerImpl
+	MuxRouter *api.RouterImpl
+	Logger    *zap.SugaredLogger
+	server    *http.Server
 }
 
-func NewApp(MuxRouter *api.RouterImpl, Logger *zap.SugaredLogger, db *pg.DB, K8sInformerImpl *informer.K8sInformerImpl) *App {
+func NewApp(MuxRouter *api.RouterImpl, Logger *zap.SugaredLogger) *App {
 	return &App{
-		MuxRouter:       MuxRouter,
-		Logger:          Logger,
-		db:              db,
-		K8sInformerImpl: K8sInformerImpl,
+		MuxRouter: MuxRouter,
+		Logger:    Logger,
 	}
 }
 func (app *App) Start() {
@@ -52,11 +46,7 @@ func (app *App) Stop() {
 		app.Logger.Errorw("error in mux router shutdown", "err", err)
 	}
 
-	// Gracefully stop all Kubernetes informers
-	app.K8sInformerImpl.StopAllSystemWorkflowInformer()
-
 	app.Logger.Infow("closing db connection")
-	err = app.db.Close()
 	if err != nil {
 		app.Logger.Errorw("Error while closing DB", "error", err)
 	}
