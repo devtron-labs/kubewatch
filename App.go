@@ -19,7 +19,7 @@ type App struct {
 	Logger          *zap.SugaredLogger
 	server          *http.Server
 	db              *pg.DB
-	K8sInformerImpl *informer.K8sInformerImpl
+	k8sInformerImpl *informer.K8sInformerImpl
 }
 
 func NewApp(MuxRouter *api.RouterImpl, Logger *zap.SugaredLogger, db *pg.DB, K8sInformerImpl *informer.K8sInformerImpl) *App {
@@ -27,7 +27,7 @@ func NewApp(MuxRouter *api.RouterImpl, Logger *zap.SugaredLogger, db *pg.DB, K8s
 		MuxRouter:       MuxRouter,
 		Logger:          Logger,
 		db:              db,
-		K8sInformerImpl: K8sInformerImpl,
+		k8sInformerImpl: K8sInformerImpl,
 	}
 }
 func (app *App) Start() {
@@ -52,7 +52,7 @@ func (app *App) Start() {
 
 	}
 	if clusterCfg.ClusterType == controller.ClusterTypeAll && !externalConfig.External {
-		controller.StartSystemWorkflowInformer(app.K8sInformerImpl)
+		app.k8sInformerImpl.BuildInformerForAllClusters()
 	}
 
 }
@@ -69,7 +69,7 @@ func (app *App) Stop() {
 	}
 
 	// Gracefully stop all Kubernetes informers
-	app.K8sInformerImpl.StopAllSystemWorkflowInformer()
+	app.k8sInformerImpl.StopAllSystemWorkflowInformer()
 
 	app.Logger.Infow("closing db connection")
 	err = app.db.Close()

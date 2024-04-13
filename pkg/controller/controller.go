@@ -25,7 +25,6 @@ import (
 	versioned2 "github.com/argoproj/argo-cd/v2/pkg/client/clientset/versioned"
 
 	appinformers "github.com/argoproj/argo-cd/v2/pkg/client/informers/externalversions/application/v1alpha1"
-	"github.com/devtron-labs/kubewatch/pkg/informer"
 	"github.com/devtron-labs/kubewatch/pkg/logger"
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -314,10 +313,6 @@ func startWorkflowInformer(namespace string, logger *zap.SugaredLogger, eventNam
 
 	go workflowInformer.Run(stopCh)
 
-}
-
-func StartSystemWorkflowInformer(k8sInformerImpl *informer.K8sInformerImpl) error {
-	return k8sInformerImpl.BuildInformerForAllClusters()
 }
 
 type PublishRequest struct {
