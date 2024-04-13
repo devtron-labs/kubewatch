@@ -25,10 +25,8 @@ import (
 	versioned2 "github.com/argoproj/argo-cd/v2/pkg/client/clientset/versioned"
 
 	appinformers "github.com/argoproj/argo-cd/v2/pkg/client/informers/externalversions/application/v1alpha1"
-	repository "github.com/devtron-labs/kubewatch/pkg/cluster"
 	"github.com/devtron-labs/kubewatch/pkg/informer"
 	"github.com/devtron-labs/kubewatch/pkg/logger"
-	"github.com/devtron-labs/kubewatch/pkg/sql"
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/dynamic"
@@ -139,6 +137,16 @@ const ClusterTypeAll string = "ALL_CLUSTER"
 
 var client *pubsub.PubSubClientServiceImpl
 
+type NewControllerImpl struct {
+	logger zap.SugaredLogger
+}
+
+func NewController(logger zap.SugaredLogger) *NewControllerImpl {
+	return &NewControllerImpl{
+		logger: logger,
+	}
+}
+
 func Start(conf *config.Config, eventHandler handlers.Handler) {
 	logger := logger.NewSugaredLogger()
 	cfg, _ := utils.GetDefaultK8sConfig("kubeconfig")
@@ -163,8 +171,6 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 		logger.Fatal("error occurred while parsing ci config", err)
 	}
 	var namespace string
-	clusterCfg := &ClusterConfig{}
-	err = env.Parse(clusterCfg)
 	if !externalConfig.External {
 		client = pubsub.NewPubSubClientServiceImpl(logger)
 	}
@@ -194,9 +200,6 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 		stopCh := make(chan struct{})
 		defer close(stopCh)
 		startWorkflowInformer(namespace, logger, pubsub.CD_WORKFLOW_STATUS_UPDATE, stopCh, dynamicClient, externalConfig)
-	}
-	if clusterCfg.ClusterType == ClusterTypeAll && !externalConfig.External {
-		startSystemWorkflowInformer(logger)
 	}
 	acdCfg := &AcdConfig{}
 	err = env.Parse(acdCfg)
@@ -313,16 +316,8 @@ func startWorkflowInformer(namespace string, logger *zap.SugaredLogger, eventNam
 
 }
 
-func startSystemWorkflowInformer(logger *zap.SugaredLogger) error {
-	config, _ := sql.GetConfig()
-	connection, err := sql.NewDbConnection(config, logger)
-	if err != nil {
-		return err
-	}
-	clusterRepositoryImpl := repository.NewClusterRepositoryImpl(connection, logger)
-	k8sInformerImpl := informer.NewK8sInformerImpl(logger, clusterRepositoryImpl, client)
-	err = k8sInformerImpl.BuildInformerForAllClusters()
-	return err
+func StartSystemWorkflowInformer(k8sInformerImpl *informer.K8sInformerImpl) error {
+	return k8sInformerImpl.BuildInformerForAllClusters()
 }
 
 type PublishRequest struct {
