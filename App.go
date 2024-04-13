@@ -44,12 +44,14 @@ func (app *App) Start() {
 	clusterCfg := &controller.ClusterConfig{}
 	err = env.Parse(clusterCfg)
 	if err != nil {
-		//TODO: handle error
+		app.Logger.Errorw("error in loading cluster config", "err", err)
+		os.Exit(2)
 	}
 	externalConfig := &controller.ExternalConfig{}
 	err = env.Parse(externalConfig)
 	if err != nil {
-
+		app.Logger.Errorw("error in loading external config", "err", err)
+		os.Exit(2)
 	}
 	if clusterCfg.ClusterType == controller.ClusterTypeAll && !externalConfig.External {
 		app.k8sInformerImpl.BuildInformerForAllClusters()

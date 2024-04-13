@@ -136,16 +136,6 @@ const ClusterTypeAll string = "ALL_CLUSTER"
 
 var client *pubsub.PubSubClientServiceImpl
 
-type NewControllerImpl struct {
-	logger zap.SugaredLogger
-}
-
-func NewController(logger zap.SugaredLogger) *NewControllerImpl {
-	return &NewControllerImpl{
-		logger: logger,
-	}
-}
-
 func Start(conf *config.Config, eventHandler handlers.Handler) {
 	logger := logger.NewSugaredLogger()
 	cfg, _ := utils.GetDefaultK8sConfig("kubeconfig")
