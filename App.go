@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/caarlos0/env"
 	api "github.com/devtron-labs/kubewatch/api/router"
+	"github.com/devtron-labs/kubewatch/pkg/controller"
 	"github.com/devtron-labs/kubewatch/pkg/informer"
 	"github.com/go-pg/pg"
 	"go.uber.org/zap"
@@ -39,6 +41,20 @@ func (app *App) Start() {
 		app.Logger.Errorw("error in startup", "err", err)
 		os.Exit(2)
 	}
+	clusterCfg := &controller.ClusterConfig{}
+	err = env.Parse(clusterCfg)
+	if err != nil {
+		//TODO: handle error
+	}
+	externalConfig := &controller.ExternalConfig{}
+	err = env.Parse(externalConfig)
+	if err != nil {
+
+	}
+	if clusterCfg.ClusterType == controller.ClusterTypeAll && !externalConfig.External {
+		controller.StartSystemWorkflowInformer(app.K8sInformerImpl)
+	}
+
 }
 
 func (app *App) Stop() {
