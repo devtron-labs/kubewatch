@@ -34,15 +34,8 @@ func (app *App) Start() {
 	port := 8080 //TODO: extract from environment variable
 	app.Logger.Infow("starting server on ", "port", port)
 	app.MuxRouter.Init()
-	server := &http.Server{Addr: fmt.Sprintf(":%d", port), Handler: app.MuxRouter.Router}
-	app.server = server
-	err := server.ListenAndServe()
-	if err != nil {
-		app.Logger.Errorw("error in startup", "err", err)
-		os.Exit(2)
-	}
 	clusterCfg := &controller.ClusterConfig{}
-	err = env.Parse(clusterCfg)
+	err := env.Parse(clusterCfg)
 	if err != nil {
 		app.Logger.Errorw("error in loading cluster config", "err", err)
 		os.Exit(2)
@@ -59,6 +52,13 @@ func (app *App) Start() {
 	}
 	if clusterCfg.ClusterType == controller.ClusterTypeAll && !externalConfig.External {
 		app.k8sInformerImpl.BuildInformerForAllClusters()
+	}
+	server := &http.Server{Addr: fmt.Sprintf(":%d", port), Handler: app.MuxRouter.Router}
+	app.server = server
+	err = server.ListenAndServe()
+	if err != nil {
+		app.Logger.Errorw("error in startup", "err", err)
+		os.Exit(2)
 	}
 
 }
