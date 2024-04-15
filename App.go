@@ -46,10 +46,6 @@ func (app *App) Start() {
 		app.Logger.Errorw("error in loading external config", "err", err)
 		os.Exit(2)
 	}
-	app.Logger.Infow(clusterCfg.ClusterType, "*****")
-	if !externalConfig.External {
-		app.Logger.Infow("**** ->>> false")
-	}
 	if clusterCfg.ClusterType == controller.ClusterTypeAll && !externalConfig.External {
 		app.k8sInformerImpl.BuildInformerForAllClusters()
 	}
