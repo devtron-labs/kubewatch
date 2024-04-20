@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"github.com/caarlos0/env"
 	api "github.com/devtron-labs/kubewatch/api/router"
+	repository "github.com/devtron-labs/kubewatch/pkg/cluster"
 	"github.com/devtron-labs/kubewatch/pkg/controller"
 	"github.com/devtron-labs/kubewatch/pkg/informer"
+	"github.com/devtron-labs/kubewatch/pkg/sql"
 	"github.com/go-pg/pg"
 	"go.uber.org/zap"
 	"net/http"
@@ -47,6 +49,16 @@ func (app *App) Start() {
 		os.Exit(2)
 	}
 	if clusterCfg.ClusterType == controller.ClusterTypeAll && !externalConfig.External {
+		config, _ := sql.GetConfig()
+		connection, err := sql.NewDbConnection(config, app.Logger)
+		if err != nil {
+			app.Logger.Errorw("error in loading external config", "err", err)
+			os.Exit(2)
+		}
+		app.db = connection
+		clusterRepositoryImpl := repository.NewClusterRepositoryImpl(connection, app.Logger)
+		k8sInformerImpl := informer.NewK8sInformerImpl(app.Logger, clusterRepositoryImpl, client)
+		app.k8sInformerImpl = k8sInformerImpl
 		app.k8sInformerImpl.BuildInformerForAllClusters()
 	}
 	server := &http.Server{Addr: fmt.Sprintf(":%d", port), Handler: app.MuxRouter.Router}
@@ -70,13 +82,25 @@ func (app *App) Stop() {
 		app.Logger.Errorw("error in mux router shutdown", "err", err)
 	}
 
-	// Gracefully stop all Kubernetes informers
-	app.k8sInformerImpl.StopAllSystemWorkflowInformer()
-
-	app.Logger.Infow("closing db connection")
-	err = app.db.Close()
+	clusterCfg := &controller.ClusterConfig{}
+	err = env.Parse(clusterCfg)
 	if err != nil {
-		app.Logger.Errorw("Error while closing DB", "error", err)
+		app.Logger.Errorw("error in loading cluster config", "err", err)
+	}
+	externalConfig := &controller.ExternalConfig{}
+	err = env.Parse(externalConfig)
+	if err != nil {
+		app.Logger.Errorw("error in loading external config", "err", err)
 	}
 
+	if clusterCfg.ClusterType == controller.ClusterTypeAll && !externalConfig.External {
+		// Gracefully stop all Kubernetes informers
+		app.k8sInformerImpl.StopAllSystemWorkflowInformer()
+
+		app.Logger.Infow("closing db connection")
+		err = app.db.Close()
+		if err != nil {
+			app.Logger.Errorw("Error while closing DB", "error", err)
+		}
+	}
 }
