@@ -64,7 +64,7 @@ github.com/antonmedv/expr/parser
 github.com/antonmedv/expr/parser/lexer
 github.com/antonmedv/expr/vm
 github.com/antonmedv/expr/vm/runtime
-# github.com/argoproj/argo-cd/v2 v2.8.13
+# github.com/argoproj/argo-cd/v2 v2.8.14
 ## explicit; go 1.19
 github.com/argoproj/argo-cd/v2/common
 github.com/argoproj/argo-cd/v2/pkg/apis/application
