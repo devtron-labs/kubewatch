@@ -8,12 +8,8 @@ package main
 
 import (
 	"github.com/devtron-labs/common-lib/monitoring"
-	"github.com/devtron-labs/common-lib/pubsub-lib"
 	"github.com/devtron-labs/kubewatch/api/router"
-	"github.com/devtron-labs/kubewatch/pkg/cluster"
-	"github.com/devtron-labs/kubewatch/pkg/informer"
 	"github.com/devtron-labs/kubewatch/pkg/logger"
-	"github.com/devtron-labs/kubewatch/pkg/sql"
 )
 
 // Injectors from Wire.go:
@@ -22,17 +18,6 @@ func InitializeApp() (*App, error) {
 	sugaredLogger := logger.NewSugaredLogger()
 	monitoringRouter := monitoring.NewMonitoringRouter(sugaredLogger)
 	routerImpl := api.NewRouter(sugaredLogger, monitoringRouter)
-	config, err := sql.GetConfig()
-	if err != nil {
-		return nil, err
-	}
-	db, err := sql.NewDbConnection(config, sugaredLogger)
-	if err != nil {
-		return nil, err
-	}
-	clusterRepositoryImpl := repository.NewClusterRepositoryImpl(db, sugaredLogger)
-	pubSubClientServiceImpl := pubsub_lib.NewPubSubClientServiceImpl(sugaredLogger)
-	k8sInformerImpl := informer.NewK8sInformerImpl(sugaredLogger, clusterRepositoryImpl, pubSubClientServiceImpl)
-	app := NewApp(routerImpl, sugaredLogger, db, k8sInformerImpl)
+	app := NewApp(routerImpl, sugaredLogger)
 	return app, nil
 }
