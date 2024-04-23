@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/devtron-labs/common-lib/monitoring"
 	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
 	"net/http"
 )
@@ -33,7 +34,7 @@ func (r *RouterImpl) Init() {
 	statsVizRouter := r.Router.PathPrefix("/kubewatch").Subrouter()
 
 	r.monitoringRouter.InitMonitoringRouter(pProfListenerRouter, statsVizRouter, "/kubewatch")
-
+	r.Router.Handle("/metrics", promhttp.Handler())
 	r.Router.Path("/health").HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		writer.Header().Set("Content-Type", "application/json")
 		writer.WriteHeader(200)
