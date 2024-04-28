@@ -17,8 +17,12 @@ limitations under the License.
 package main
 
 import (
+	"fmt"
 	"github.com/devtron-labs/kubewatch/cmd"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 )
 
 func main() {
@@ -27,5 +31,16 @@ func main() {
 		log.Panic(err)
 	}
 	go app.Start()
+	//     gracefulStop start
+	var gracefulStop = make(chan os.Signal)
+	signal.Notify(gracefulStop, syscall.SIGTERM)
+	signal.Notify(gracefulStop, syscall.SIGINT)
+	go func() {
+		sig := <-gracefulStop
+		fmt.Printf("caught sig: %+v", sig)
+		app.Stop()
+		os.Exit(0)
+	}()
+	//      gracefulStop end
 	cmd.Execute()
 }
