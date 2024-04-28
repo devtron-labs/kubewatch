@@ -21,7 +21,6 @@ type App struct {
 	MuxRouter       *api.RouterImpl
 	Logger          *zap.SugaredLogger
 	server          *http.Server
-	startController *controller.StartController
 	k8sInformerImpl *informer.K8sInformerImpl
 	clusterCfg      *controller.ClusterConfig
 	externalConfig  *controller.ExternalConfig
@@ -73,8 +72,8 @@ func (app *App) Start() {
 		err = app.k8sInformerImpl.BuildInformerForAllClusters()
 	}
 
-	app.startController = controller.NewStartController(app.Logger, client)
-	app.startController.Start()
+	startController := controller.NewStartController(app.Logger, client)
+	startController.Start()
 
 	app.server = &http.Server{Addr: fmt.Sprintf(":%d", port), Handler: app.MuxRouter.Router}
 	err = app.server.ListenAndServe()
