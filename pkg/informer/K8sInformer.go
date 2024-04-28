@@ -256,6 +256,17 @@ func (impl *K8sInformerImpl) stopSystemWorkflowInformer(clusterId int) {
 	return
 }
 
+func (impl *K8sInformerImpl) StopAllSystemWorkflowInformer() {
+	var keysToDelete []int
+	for clusterId, _ := range impl.informerStopper {
+		keysToDelete = append(keysToDelete, clusterId)
+	}
+	for _, clusterId := range keysToDelete {
+		impl.stopSystemWorkflowInformer(clusterId)
+	}
+	return
+}
+
 func (impl *K8sInformerImpl) startSystemWorkflowInformer(clusterId int) error {
 
 	clusterInfo, err := impl.clusterRepository.FindById(clusterId)

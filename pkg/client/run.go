@@ -22,7 +22,6 @@ import (
 
 	"github.com/devtron-labs/common-lib/constants"
 	"github.com/devtron-labs/kubewatch/config"
-	"github.com/devtron-labs/kubewatch/pkg/controller"
 	"github.com/devtron-labs/kubewatch/pkg/handlers"
 	"github.com/devtron-labs/kubewatch/pkg/handlers/flock"
 	"github.com/devtron-labs/kubewatch/pkg/handlers/hipchat"
@@ -59,6 +58,4 @@ func Run(conf *config.Config) {
 			log.Print(constants.PanicLogIdentifier+"recovered from panic", "err", err, "stack", string(debug.Stack()))
 		}
 	}()
-
-	controller.Start(conf, eventHandler)
 }
