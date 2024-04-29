@@ -145,7 +145,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 	externalConfig := &ExternalConfig{}
 	err := env.Parse(externalConfig)
 	if err != nil {
-		logger.Fatal("error occurred while parsing external cd config", err)
+		logger.Errorw("error occurred while parsing external cd config", err)
 	}
 	httpClient, err := rest.HTTPClientFor(cfg)
 	if err != nil {
@@ -160,7 +160,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 	ciCfg := &CiConfig{}
 	err = env.Parse(ciCfg)
 	if err != nil {
-		logger.Fatal("error occurred while parsing ci config", err)
+		logger.Errorw("error occurred while parsing ci config", err)
 	}
 	var namespace string
 	clusterCfg := &ClusterConfig{}
@@ -183,7 +183,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 	cdCfg := &CdConfig{}
 	err = env.Parse(cdCfg)
 	if err != nil {
-		logger.Fatal("error occurred while parsing cd config", err)
+		logger.Errorw("error occurred while parsing cd config", err)
 	}
 	if cdCfg.CdInformer {
 		if externalConfig.External {
