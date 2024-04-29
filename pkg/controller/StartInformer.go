@@ -60,19 +60,19 @@ const cronMinuteWiseEventName string = "minute-event"
 
 const ClusterTypeAll string = "ALL_CLUSTER"
 
-type StartController struct {
+type StartInformer struct {
 	logger *zap.SugaredLogger
 	client *pubsub.PubSubClientServiceImpl
 }
 
-func NewStartController(logger *zap.SugaredLogger, client *pubsub.PubSubClientServiceImpl) *StartController {
-	return &StartController{
+func NewStartController(logger *zap.SugaredLogger, client *pubsub.PubSubClientServiceImpl) *StartInformer {
+	return &StartInformer{
 		logger: logger,
 		client: client,
 	}
 }
 
-func (sc *StartController) Start() {
+func (sc *StartInformer) Start() {
 	cfg, _ := utils.GetDefaultK8sConfig("kubeconfig")
 	externalConfig := &ExternalConfig{}
 	err := env.Parse(externalConfig)
@@ -200,7 +200,7 @@ func (sc *StartController) Start() {
 	<-sigterm
 }
 
-func (sc *StartController) startWorkflowInformer(namespace string, eventName string, stopCh chan struct{}, dynamicClient dynamic.Interface, externalCD *ExternalConfig) {
+func (sc *StartInformer) startWorkflowInformer(namespace string, eventName string, stopCh chan struct{}, dynamicClient dynamic.Interface, externalCD *ExternalConfig) {
 
 	workflowInformer := util.NewWorkflowInformer(dynamicClient, namespace, 0, nil, cache.Indexers{})
 	sc.logger.Debugw("NewWorkflowInformer", "workflowInformer", workflowInformer)
@@ -271,7 +271,7 @@ type ApplicationDetail struct {
 	StatusTime  time.Time             `json:"statusTime"`
 }
 
-func (sc *StartController) SendAppUpdate(app *v1alpha1.Application, statusTime time.Time) {
+func (sc *StartInformer) SendAppUpdate(app *v1alpha1.Application, statusTime time.Time) {
 	if sc.client == nil {
 		log.Println("client is nil, don't send update")
 		return
@@ -296,7 +296,7 @@ func (sc *StartController) SendAppUpdate(app *v1alpha1.Application, statusTime t
 	log.Println("app update sent for app: " + app.Name)
 }
 
-func (sc *StartController) SendAppDelete(app *v1alpha1.Application, statusTime time.Time) {
+func (sc *StartInformer) SendAppDelete(app *v1alpha1.Application, statusTime time.Time) {
 	if sc.client == nil {
 		log.Println("client is nil, don't send delete update")
 		return
