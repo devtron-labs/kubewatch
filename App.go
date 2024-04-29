@@ -72,8 +72,8 @@ func (app *App) Start() {
 		err = app.k8sInformerImpl.BuildInformerForAllClusters()
 	}
 
-	startController := controller.NewStartController(app.Logger, client)
-	startController.Start()
+	startInformer := controller.NewStartController(app.Logger, client)
+	startInformer.Start()
 
 	app.server = &http.Server{Addr: fmt.Sprintf(":%d", port), Handler: app.MuxRouter.Router}
 	err = app.server.ListenAndServe()
