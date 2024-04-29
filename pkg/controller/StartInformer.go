@@ -72,27 +72,27 @@ func NewStartController(logger *zap.SugaredLogger, client *pubsub.PubSubClientSe
 	}
 }
 
-func (sc *StartInformer) Start() {
+func (si *StartInformer) Start() {
 	cfg, _ := utils.GetDefaultK8sConfig("kubeconfig")
 	externalConfig := &ExternalConfig{}
 	err := env.Parse(externalConfig)
 	if err != nil {
-		sc.logger.Fatal("error occurred while parsing external cd config", err)
+		si.logger.Fatal("error occurred while parsing external cd config", err)
 	}
 	httpClient, err := rest.HTTPClientFor(cfg)
 	if err != nil {
-		sc.logger.Error("error occurred in rest HTTPClientFor", err)
+		si.logger.Error("error occurred in rest HTTPClientFor", err)
 		return
 	}
 	dynamicClient, err := dynamic.NewForConfigAndClient(cfg, httpClient)
 	if err != nil {
-		sc.logger.Errorw("error in getting dynamic interface for resource", "err", err)
+		si.logger.Errorw("error in getting dynamic interface for resource", "err", err)
 		return
 	}
 	ciCfg := &CiConfig{}
 	err = env.Parse(ciCfg)
 	if err != nil {
-		sc.logger.Fatal("error occurred while parsing ci config", err)
+		si.logger.Fatal("error occurred while parsing ci config", err)
 	}
 	var namespace string
 	clusterCfg := &ClusterConfig{}
@@ -105,14 +105,14 @@ func (sc *StartInformer) Start() {
 		}
 		stopCh := make(chan struct{})
 		defer close(stopCh)
-		sc.startWorkflowInformer(namespace, pubsub.WORKFLOW_STATUS_UPDATE_TOPIC, stopCh, dynamicClient, externalConfig)
+		si.startWorkflowInformer(namespace, pubsub.WORKFLOW_STATUS_UPDATE_TOPIC, stopCh, dynamicClient, externalConfig)
 	}
 
 	///-------------------
 	cdCfg := &CdConfig{}
 	err = env.Parse(cdCfg)
 	if err != nil {
-		sc.logger.Fatal("error occurred while parsing cd config", err)
+		si.logger.Fatal("error occurred while parsing cd config", err)
 	}
 	if cdCfg.CdInformer {
 		if externalConfig.External {
@@ -122,7 +122,7 @@ func (sc *StartInformer) Start() {
 		}
 		stopCh := make(chan struct{})
 		defer close(stopCh)
-		sc.startWorkflowInformer(namespace, pubsub.CD_WORKFLOW_STATUS_UPDATE, stopCh, dynamicClient, externalConfig)
+		si.startWorkflowInformer(namespace, pubsub.CD_WORKFLOW_STATUS_UPDATE, stopCh, dynamicClient, externalConfig)
 	}
 	acdCfg := &AcdConfig{}
 	err = env.Parse(acdCfg)
@@ -131,30 +131,30 @@ func (sc *StartInformer) Start() {
 	}
 
 	if acdCfg.ACDInformer && !externalConfig.External {
-		sc.logger.Info("starting acd informer")
+		si.logger.Info("starting acd informer")
 		clientset := versioned.NewForConfigOrDie(cfg)
 		acdInformer := v1alpha12.NewApplicationInformer(clientset, acdCfg.ACDNamespace, 0, cache.Indexers{})
 
 		acdInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
-				sc.logger.Debug("app added")
+				si.logger.Debug("app added")
 
 				if app, ok := obj.(*v1alpha1.Application); ok {
-					sc.logger.Debugf("new app detected: %s, status:%s", app.Name, app.Status.Health.Status)
+					si.logger.Debugf("new app detected: %s, status:%s", app.Name, app.Status.Health.Status)
 					//SendAppUpdate(app, client, nil)
 				}
 			},
 			UpdateFunc: func(old interface{}, new interface{}) {
-				sc.logger.Debug("app update detected")
+				si.logger.Debug("app update detected")
 				statusTime := time.Now()
 				if oldApp, ok := old.(*v1alpha1.Application); ok {
 					if newApp, ok := new.(*v1alpha1.Application); ok {
 						if newApp.Status.History != nil && len(newApp.Status.History) > 0 {
 							if oldApp.Status.History == nil || len(oldApp.Status.History) == 0 {
-								sc.logger.Debug("new deployment detected")
-								sc.SendAppUpdate(newApp, statusTime)
+								si.logger.Debug("new deployment detected")
+								si.SendAppUpdate(newApp, statusTime)
 							} else {
-								sc.logger.Debugf("old deployment detected for update: %s, status:%s", oldApp.Name, oldApp.Status.Health.Status)
+								si.logger.Debugf("old deployment detected for update: %s, status:%s", oldApp.Name, oldApp.Status.Health.Status)
 								oldRevision := oldApp.Status.Sync.Revision
 								newRevision := newApp.Status.Sync.Revision
 								oldStatus := string(oldApp.Status.Health.Status)
@@ -162,12 +162,12 @@ func (sc *StartInformer) Start() {
 								newSyncStatus := string(newApp.Status.Sync.Status)
 								oldSyncStatus := string(oldApp.Status.Sync.Status)
 								if (oldRevision != newRevision) || (oldStatus != newStatus) || (newSyncStatus != oldSyncStatus) {
-									sc.SendAppUpdate(newApp, statusTime)
-									sc.logger.Debug("send update app:" + oldApp.Name + ", oldRevision: " + oldRevision + ", newRevision:" +
+									si.SendAppUpdate(newApp, statusTime)
+									si.logger.Debug("send update app:" + oldApp.Name + ", oldRevision: " + oldRevision + ", newRevision:" +
 										newRevision + ", oldStatus: " + oldStatus + ", newStatus: " + newStatus +
 										", newSyncStatus: " + newSyncStatus + ", oldSyncStatus: " + oldSyncStatus)
 								} else {
-									sc.logger.Debug("skip updating app:" + oldApp.Name + ", oldRevision: " + oldRevision + ", newRevision:" +
+									si.logger.Debug("skip updating app:" + oldApp.Name + ", oldRevision: " + oldRevision + ", newRevision:" +
 										newRevision + ", oldStatus: " + oldStatus + ", newStatus: " + newStatus +
 										", newSyncStatus: " + newSyncStatus + ", oldSyncStatus: " + oldSyncStatus)
 								}
@@ -183,8 +183,8 @@ func (sc *StartInformer) Start() {
 			DeleteFunc: func(obj interface{}) {
 				if app, ok := obj.(*v1alpha1.Application); ok {
 					statusTime := time.Now()
-					sc.logger.Debugf("app delete detected: %s, status:%s", app.Name, app.Status.Health.Status)
-					sc.SendAppDelete(app, statusTime)
+					si.logger.Debugf("app delete detected: %s, status:%s", app.Name, app.Status.Health.Status)
+					si.SendAppDelete(app, statusTime)
 				}
 			},
 		})
@@ -200,36 +200,36 @@ func (sc *StartInformer) Start() {
 	<-sigterm
 }
 
-func (sc *StartInformer) startWorkflowInformer(namespace string, eventName string, stopCh chan struct{}, dynamicClient dynamic.Interface, externalCD *ExternalConfig) {
+func (si *StartInformer) startWorkflowInformer(namespace string, eventName string, stopCh chan struct{}, dynamicClient dynamic.Interface, externalCD *ExternalConfig) {
 
 	workflowInformer := util.NewWorkflowInformer(dynamicClient, namespace, 0, nil, cache.Indexers{})
-	sc.logger.Debugw("NewWorkflowInformer", "workflowInformer", workflowInformer)
+	si.logger.Debugw("NewWorkflowInformer", "workflowInformer", workflowInformer)
 	workflowInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {},
 		UpdateFunc: func(oldWf, newWf interface{}) {
-			sc.logger.Info("workflow update detected")
+			si.logger.Info("workflow update detected")
 			if workflow, ok := newWf.(*unstructured.Unstructured).Object["status"]; ok {
 				wfJson, err := json.Marshal(workflow)
 				if err != nil {
-					sc.logger.Errorw("error occurred while marshalling workflow", "err", err)
+					si.logger.Errorw("error occurred while marshalling workflow", "err", err)
 					return
 				}
-				sc.logger.Debugw("sending workflow update event ", "wfJson", string(wfJson))
+				si.logger.Debugw("sending workflow update event ", "wfJson", string(wfJson))
 				var reqBody = []byte(wfJson)
 				if externalCD.External {
 					err = PublishEventsOnRest(reqBody, eventName, externalCD)
 				} else {
-					if sc.client == nil {
-						sc.logger.Warn("don't publish")
+					if si.client == nil {
+						si.logger.Warn("don't publish")
 						return
 					}
-					err = sc.client.Publish(eventName, string(reqBody))
+					err = si.client.Publish(eventName, string(reqBody))
 				}
 				if err != nil {
-					sc.logger.Errorw("Error while publishing Request", "err ", err)
+					si.logger.Errorw("Error while publishing Request", "err ", err)
 					return
 				}
-				sc.logger.Debug("workflow update sent")
+				si.logger.Debug("workflow update sent")
 			}
 		},
 		DeleteFunc: func(wf interface{}) {},
@@ -271,8 +271,8 @@ type ApplicationDetail struct {
 	StatusTime  time.Time             `json:"statusTime"`
 }
 
-func (sc *StartInformer) SendAppUpdate(app *v1alpha1.Application, statusTime time.Time) {
-	if sc.client == nil {
+func (si *StartInformer) SendAppUpdate(app *v1alpha1.Application, statusTime time.Time) {
+	if si.client == nil {
 		log.Println("client is nil, don't send update")
 		return
 	}
@@ -288,7 +288,7 @@ func (sc *StartInformer) SendAppUpdate(app *v1alpha1.Application, statusTime tim
 	log.Println("app update event for publish: ", string(appJson))
 	var reqBody = []byte(appJson)
 
-	err = sc.client.Publish(pubsub.APPLICATION_STATUS_UPDATE_TOPIC, string(reqBody))
+	err = si.client.Publish(pubsub.APPLICATION_STATUS_UPDATE_TOPIC, string(reqBody))
 	if err != nil {
 		log.Println("Error while publishing Request", err)
 		return
@@ -296,8 +296,8 @@ func (sc *StartInformer) SendAppUpdate(app *v1alpha1.Application, statusTime tim
 	log.Println("app update sent for app: " + app.Name)
 }
 
-func (sc *StartInformer) SendAppDelete(app *v1alpha1.Application, statusTime time.Time) {
-	if sc.client == nil {
+func (si *StartInformer) SendAppDelete(app *v1alpha1.Application, statusTime time.Time) {
+	if si.client == nil {
 		log.Println("client is nil, don't send delete update")
 		return
 	}
@@ -313,7 +313,7 @@ func (sc *StartInformer) SendAppDelete(app *v1alpha1.Application, statusTime tim
 	log.Println("app delete event for publish: ", string(appJson))
 	var reqBody = []byte(appJson)
 
-	err = sc.client.Publish(pubsub.APPLICATION_STATUS_DELETE_TOPIC, string(reqBody))
+	err = si.client.Publish(pubsub.APPLICATION_STATUS_DELETE_TOPIC, string(reqBody))
 	if err != nil {
 		log.Println("Error while publishing Request", err)
 		return
