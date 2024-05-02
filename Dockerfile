@@ -22,4 +22,6 @@ RUN chmod +x ./kubewatch
 
 USER devtron
 
-ENTRYPOINT ["tail", "-f", "/dev/null"]
+# ENTRYPOINT ["tail", "-f", "/dev/null"]
+
+ENTRYPOINT ["./kubewatch/kubewatch"]
