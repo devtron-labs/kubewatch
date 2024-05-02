@@ -9,6 +9,8 @@ ADD . /go/src/github.com/devtron-labs/kubewatch
 RUN ls -l
 RUN GOOS=linux make
 
+RUN ls -l
+
 FROM alpine:3.18
 
 RUN apk add --update ca-certificates
