@@ -6,6 +6,7 @@ RUN apk add --no-cache git gcc musl-dev
 RUN apk add --update make
 WORKDIR /go/src/github.com/devtron-labs/kubewatch
 ADD . /go/src/github.com/devtron-labs/kubewatch
+RUN ls
 RUN GOOS=linux make
 
 FROM alpine:3.18
