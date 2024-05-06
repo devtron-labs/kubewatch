@@ -166,7 +166,11 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 	clusterCfg := &ClusterConfig{}
 	err = env.Parse(clusterCfg)
 	if !externalConfig.External {
-		client = pubsub.NewPubSubClientServiceImpl(logger)
+		client, err = pubsub.NewPubSubClientServiceImpl(logger)
+		if err != nil {
+			logger.Error("error occurred in rest HTTPClientFor", err)
+			return
+		}
 	}
 	if ciCfg.CiInformer {
 		if externalConfig.External {
