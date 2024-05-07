@@ -58,100 +58,99 @@ const cronMinuteWiseEventName string = "minute-event"
 const ClusterTypeAll string = "ALL_CLUSTER"
 
 type Informer struct {
-	logger *zap.SugaredLogger
-	client *pubsub.PubSubClientServiceImpl
+	logger         *zap.SugaredLogger
+	client         *pubsub.PubSubClientServiceImpl
+	externalConfig *ExternalConfig
 }
 
-func NewStartController(logger *zap.SugaredLogger, client *pubsub.PubSubClientServiceImpl) *Informer {
+func NewStartController(logger *zap.SugaredLogger, client *pubsub.PubSubClientServiceImpl, externalConfig *ExternalConfig) *Informer {
 	return &Informer{
-		logger: logger,
-		client: client,
+		logger:         logger,
+		client:         client,
+		externalConfig: externalConfig,
 	}
 }
 
-func (si *Informer) Start() {
+func (impl *Informer) Start() error {
 	cfg, _ := utils.GetDefaultK8sConfig("kubeconfig")
-	externalConfig := &ExternalConfig{}
-	err := env.Parse(externalConfig)
-	if err != nil {
-		si.logger.Fatal("error occurred while parsing external cd config", err)
-	}
 	httpClient, err := rest.HTTPClientFor(cfg)
 	if err != nil {
-		si.logger.Error("error occurred in rest HTTPClientFor", err)
-		return
+		impl.logger.Error("error occurred in rest HTTPClientFor", err)
+		return err
 	}
 	dynamicClient, err := dynamic.NewForConfigAndClient(cfg, httpClient)
 	if err != nil {
-		si.logger.Errorw("error in getting dynamic interface for resource", "err", err)
-		return
+		impl.logger.Errorw("error in getting dynamic interface for resource", "err", err)
+		return err
 	}
 	ciCfg := &CiConfig{}
 	err = env.Parse(ciCfg)
 	if err != nil {
-		si.logger.Fatal("error occurred while parsing ci config", err)
+		impl.logger.Errorw("error occurred while parsing ci config", err)
+		return err
 	}
 	var namespace string
 	clusterCfg := &ClusterConfig{}
 	err = env.Parse(clusterCfg)
 	if ciCfg.CiInformer {
-		if externalConfig.External {
-			namespace = externalConfig.Namespace
+		if impl.externalConfig.External {
+			namespace = impl.externalConfig.Namespace
 		} else {
 			namespace = ciCfg.DefaultNamespace
 		}
 		stopCh := make(chan struct{})
 		defer close(stopCh)
-		si.startWorkflowInformer(namespace, pubsub.WORKFLOW_STATUS_UPDATE_TOPIC, stopCh, dynamicClient, externalConfig)
+		impl.startWorkflowInformer(namespace, pubsub.WORKFLOW_STATUS_UPDATE_TOPIC, stopCh, dynamicClient, impl.externalConfig)
 	}
 
 	///-------------------
 	cdCfg := &CdConfig{}
 	err = env.Parse(cdCfg)
 	if err != nil {
-		si.logger.Fatal("error occurred while parsing cd config", err)
+		impl.logger.Errorw("error occurred while parsing cd config", err)
+		return err
 	}
 	if cdCfg.CdInformer {
-		if externalConfig.External {
-			namespace = externalConfig.Namespace
+		if impl.externalConfig.External {
+			namespace = impl.externalConfig.Namespace
 		} else {
 			namespace = cdCfg.DefaultNamespace
 		}
 		stopCh := make(chan struct{})
 		defer close(stopCh)
-		si.startWorkflowInformer(namespace, pubsub.CD_WORKFLOW_STATUS_UPDATE, stopCh, dynamicClient, externalConfig)
+		impl.startWorkflowInformer(namespace, pubsub.CD_WORKFLOW_STATUS_UPDATE, stopCh, dynamicClient, impl.externalConfig)
 	}
 	acdCfg := &AcdConfig{}
 	err = env.Parse(acdCfg)
 	if err != nil {
-		return
+		return err
 	}
 
-	if acdCfg.ACDInformer && !externalConfig.External {
-		si.logger.Info("starting acd informer")
+	if acdCfg.ACDInformer && !impl.externalConfig.External {
+		impl.logger.Info("starting acd informer")
 		clientset := versioned.NewForConfigOrDie(cfg)
 		acdInformer := v1alpha12.NewApplicationInformer(clientset, acdCfg.ACDNamespace, 0, cache.Indexers{})
 
 		acdInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
-				si.logger.Debug("app added")
+				impl.logger.Debug("app added")
 
 				if app, ok := obj.(*v1alpha1.Application); ok {
-					si.logger.Debugf("new app detected: %s, status:%s", app.Name, app.Status.Health.Status)
+					impl.logger.Debugf("new app detected: %s, status:%s", app.Name, app.Status.Health.Status)
 					//SendAppUpdate(app, client, nil)
 				}
 			},
 			UpdateFunc: func(old interface{}, new interface{}) {
-				si.logger.Debug("app update detected")
+				impl.logger.Debug("app update detected")
 				statusTime := time.Now()
 				if oldApp, ok := old.(*v1alpha1.Application); ok {
 					if newApp, ok := new.(*v1alpha1.Application); ok {
 						if newApp.Status.History != nil && len(newApp.Status.History) > 0 {
 							if oldApp.Status.History == nil || len(oldApp.Status.History) == 0 {
-								si.logger.Debug("new deployment detected")
-								si.SendAppUpdate(newApp, statusTime)
+								impl.logger.Debug("new deployment detected")
+								impl.SendAppUpdate(newApp, statusTime)
 							} else {
-								si.logger.Debugf("old deployment detected for update: %s, status:%s", oldApp.Name, oldApp.Status.Health.Status)
+								impl.logger.Debugf("old deployment detected for update: %s, status:%s", oldApp.Name, oldApp.Status.Health.Status)
 								oldRevision := oldApp.Status.Sync.Revision
 								newRevision := newApp.Status.Sync.Revision
 								oldStatus := string(oldApp.Status.Health.Status)
@@ -159,12 +158,12 @@ func (si *Informer) Start() {
 								newSyncStatus := string(newApp.Status.Sync.Status)
 								oldSyncStatus := string(oldApp.Status.Sync.Status)
 								if (oldRevision != newRevision) || (oldStatus != newStatus) || (newSyncStatus != oldSyncStatus) {
-									si.SendAppUpdate(newApp, statusTime)
-									si.logger.Debug("send update app:" + oldApp.Name + ", oldRevision: " + oldRevision + ", newRevision:" +
+									impl.SendAppUpdate(newApp, statusTime)
+									impl.logger.Debug("send update app:" + oldApp.Name + ", oldRevision: " + oldRevision + ", newRevision:" +
 										newRevision + ", oldStatus: " + oldStatus + ", newStatus: " + newStatus +
 										", newSyncStatus: " + newSyncStatus + ", oldSyncStatus: " + oldSyncStatus)
 								} else {
-									si.logger.Debug("skip updating app:" + oldApp.Name + ", oldRevision: " + oldRevision + ", newRevision:" +
+									impl.logger.Debug("skip updating app:" + oldApp.Name + ", oldRevision: " + oldRevision + ", newRevision:" +
 										newRevision + ", oldStatus: " + oldStatus + ", newStatus: " + newStatus +
 										", newSyncStatus: " + newSyncStatus + ", oldSyncStatus: " + oldSyncStatus)
 								}
@@ -180,8 +179,8 @@ func (si *Informer) Start() {
 			DeleteFunc: func(obj interface{}) {
 				if app, ok := obj.(*v1alpha1.Application); ok {
 					statusTime := time.Now()
-					si.logger.Debugf("app delete detected: %s, status:%s", app.Name, app.Status.Health.Status)
-					si.SendAppDelete(app, statusTime)
+					impl.logger.Debugf("app delete detected: %s, status:%s", app.Name, app.Status.Health.Status)
+					impl.SendAppDelete(app, statusTime)
 				}
 			},
 		})
@@ -190,38 +189,39 @@ func (si *Informer) Start() {
 		defer close(appStopCh)
 		go acdInformer.Run(appStopCh)
 	}
+	return nil
 }
 
-func (si *Informer) startWorkflowInformer(namespace string, eventName string, stopCh chan struct{}, dynamicClient dynamic.Interface, externalCD *ExternalConfig) {
+func (impl *Informer) startWorkflowInformer(namespace string, eventName string, stopCh chan struct{}, dynamicClient dynamic.Interface, externalCD *ExternalConfig) {
 
 	workflowInformer := util.NewWorkflowInformer(dynamicClient, namespace, 0, nil, cache.Indexers{})
-	si.logger.Debugw("NewWorkflowInformer", "workflowInformer", workflowInformer)
+	impl.logger.Debugw("NewWorkflowInformer", "workflowInformer", workflowInformer)
 	workflowInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {},
 		UpdateFunc: func(oldWf, newWf interface{}) {
-			si.logger.Info("workflow update detected")
+			impl.logger.Info("workflow update detected")
 			if workflow, ok := newWf.(*unstructured.Unstructured).Object["status"]; ok {
 				wfJson, err := json.Marshal(workflow)
 				if err != nil {
-					si.logger.Errorw("error occurred while marshalling workflow", "err", err)
+					impl.logger.Errorw("error occurred while marshalling workflow", "err", err)
 					return
 				}
-				si.logger.Debugw("sending workflow update event ", "wfJson", string(wfJson))
+				impl.logger.Debugw("sending workflow update event ", "wfJson", string(wfJson))
 				var reqBody = []byte(wfJson)
 				if externalCD.External {
 					err = PublishEventsOnRest(reqBody, eventName, externalCD)
 				} else {
-					if si.client == nil {
-						si.logger.Warn("don't publish")
+					if impl.client == nil {
+						impl.logger.Warn("don't publish")
 						return
 					}
-					err = si.client.Publish(eventName, string(reqBody))
+					err = impl.client.Publish(eventName, string(reqBody))
 				}
 				if err != nil {
-					si.logger.Errorw("Error while publishing Request", "err ", err)
+					impl.logger.Errorw("Error while publishing Request", "err ", err)
 					return
 				}
-				si.logger.Debug("workflow update sent")
+				impl.logger.Debug("workflow update sent")
 			}
 		},
 		DeleteFunc: func(wf interface{}) {},
@@ -263,8 +263,8 @@ type ApplicationDetail struct {
 	StatusTime  time.Time             `json:"statusTime"`
 }
 
-func (si *Informer) SendAppUpdate(app *v1alpha1.Application, statusTime time.Time) {
-	if si.client == nil {
+func (impl *Informer) SendAppUpdate(app *v1alpha1.Application, statusTime time.Time) {
+	if impl.client == nil {
 		log.Println("client is nil, don't send update")
 		return
 	}
@@ -280,7 +280,7 @@ func (si *Informer) SendAppUpdate(app *v1alpha1.Application, statusTime time.Tim
 	log.Println("app update event for publish: ", string(appJson))
 	var reqBody = []byte(appJson)
 
-	err = si.client.Publish(pubsub.APPLICATION_STATUS_UPDATE_TOPIC, string(reqBody))
+	err = impl.client.Publish(pubsub.APPLICATION_STATUS_UPDATE_TOPIC, string(reqBody))
 	if err != nil {
 		log.Println("Error while publishing Request", err)
 		return
@@ -288,8 +288,8 @@ func (si *Informer) SendAppUpdate(app *v1alpha1.Application, statusTime time.Tim
 	log.Println("app update sent for app: " + app.Name)
 }
 
-func (si *Informer) SendAppDelete(app *v1alpha1.Application, statusTime time.Time) {
-	if si.client == nil {
+func (impl *Informer) SendAppDelete(app *v1alpha1.Application, statusTime time.Time) {
+	if impl.client == nil {
 		log.Println("client is nil, don't send delete update")
 		return
 	}
@@ -305,7 +305,7 @@ func (si *Informer) SendAppDelete(app *v1alpha1.Application, statusTime time.Tim
 	log.Println("app delete event for publish: ", string(appJson))
 	var reqBody = []byte(appJson)
 
-	err = si.client.Publish(pubsub.APPLICATION_STATUS_DELETE_TOPIC, string(reqBody))
+	err = impl.client.Publish(pubsub.APPLICATION_STATUS_DELETE_TOPIC, string(reqBody))
 	if err != nil {
 		log.Println("Error while publishing Request", err)
 		return

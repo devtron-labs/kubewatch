@@ -46,11 +46,15 @@ func (app *App) Start() {
 		app.buildInformerForAllClusters(client)
 	}
 
-	startInformer := controller.NewStartController(app.Logger, client)
-	startInformer.Start()
+	startInformer := controller.NewStartController(app.Logger, client, app.externalConfig)
+	err := startInformer.Start()
+	if err != nil {
+		app.Logger.Errorw("error in startup", "err", err)
+		os.Exit(2)
+	}
 
 	app.server = &http.Server{Addr: fmt.Sprintf(":%d", port), Handler: app.MuxRouter.Router}
-	err := app.server.ListenAndServe()
+	err = app.server.ListenAndServe()
 	if err != nil {
 		app.Logger.Errorw("error in startup", "err", err)
 		os.Exit(2)
