@@ -18,7 +18,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/devtron-labs/kubewatch/cmd"
 	"log"
 	"os"
 	"os/signal"
@@ -42,5 +41,4 @@ func main() {
 		os.Exit(0)
 	}()
 	//      gracefulStop end
-	cmd.Execute()
 }
