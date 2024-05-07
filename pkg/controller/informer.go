@@ -57,19 +57,19 @@ const cronMinuteWiseEventName string = "minute-event"
 
 const ClusterTypeAll string = "ALL_CLUSTER"
 
-type StartInformer struct {
+type Informer struct {
 	logger *zap.SugaredLogger
 	client *pubsub.PubSubClientServiceImpl
 }
 
-func NewStartController(logger *zap.SugaredLogger, client *pubsub.PubSubClientServiceImpl) *StartInformer {
-	return &StartInformer{
+func NewStartController(logger *zap.SugaredLogger, client *pubsub.PubSubClientServiceImpl) *Informer {
+	return &Informer{
 		logger: logger,
 		client: client,
 	}
 }
 
-func (si *StartInformer) Start() {
+func (si *Informer) Start() {
 	cfg, _ := utils.GetDefaultK8sConfig("kubeconfig")
 	externalConfig := &ExternalConfig{}
 	err := env.Parse(externalConfig)
@@ -192,7 +192,7 @@ func (si *StartInformer) Start() {
 	}
 }
 
-func (si *StartInformer) startWorkflowInformer(namespace string, eventName string, stopCh chan struct{}, dynamicClient dynamic.Interface, externalCD *ExternalConfig) {
+func (si *Informer) startWorkflowInformer(namespace string, eventName string, stopCh chan struct{}, dynamicClient dynamic.Interface, externalCD *ExternalConfig) {
 
 	workflowInformer := util.NewWorkflowInformer(dynamicClient, namespace, 0, nil, cache.Indexers{})
 	si.logger.Debugw("NewWorkflowInformer", "workflowInformer", workflowInformer)
@@ -263,7 +263,7 @@ type ApplicationDetail struct {
 	StatusTime  time.Time             `json:"statusTime"`
 }
 
-func (si *StartInformer) SendAppUpdate(app *v1alpha1.Application, statusTime time.Time) {
+func (si *Informer) SendAppUpdate(app *v1alpha1.Application, statusTime time.Time) {
 	if si.client == nil {
 		log.Println("client is nil, don't send update")
 		return
@@ -288,7 +288,7 @@ func (si *StartInformer) SendAppUpdate(app *v1alpha1.Application, statusTime tim
 	log.Println("app update sent for app: " + app.Name)
 }
 
-func (si *StartInformer) SendAppDelete(app *v1alpha1.Application, statusTime time.Time) {
+func (si *Informer) SendAppDelete(app *v1alpha1.Application, statusTime time.Time) {
 	if si.client == nil {
 		log.Println("client is nil, don't send delete update")
 		return
