@@ -18,6 +18,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/devtron-labs/kubewatch/pkg/controller"
 	"log"
 	"os"
 	"os/signal"
@@ -40,5 +41,13 @@ func main() {
 		os.Exit(0)
 	}()
 	//      gracefulStop end
-	app.Start()
+	go app.Start()
+	client := app.getPubSubClientForInternalConfig()
+
+	if app.isClusterTypeAllAndIsInternalConfig() {
+		app.buildInformerForAllClusters(client)
+	}
+
+	startInformer := controller.NewStartController(app.Logger, client, app.externalConfig)
+	startInformer.Start()
 }

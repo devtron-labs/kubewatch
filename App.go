@@ -40,20 +40,12 @@ func (app *App) Start() {
 	app.Logger.Infow("starting server on ", "port", port)
 	app.MuxRouter.Init()
 
-	client := app.getPubSubClientForInternalConfig()
-
-	if app.isClusterTypeAllAndIsInternalConfig() {
-		app.buildInformerForAllClusters(client)
-	}
-
 	app.server = &http.Server{Addr: fmt.Sprintf(":%d", port), Handler: app.MuxRouter.Router}
 	err := app.server.ListenAndServe()
 	if err != nil {
 		app.Logger.Errorw("error in startup", "err", err)
 		os.Exit(2)
 	}
-	startInformer := controller.NewStartController(app.Logger, client, app.externalConfig)
-	startInformer.Start()
 }
 
 func (app *App) getPubSubClientForInternalConfig() *pubsub.PubSubClientServiceImpl {
