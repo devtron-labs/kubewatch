@@ -17,6 +17,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"log"
+	"os"
 	"time"
 )
 
@@ -76,17 +77,20 @@ func (impl *Informer) Start() {
 	httpClient, err := rest.HTTPClientFor(cfg)
 	if err != nil {
 		impl.logger.Error("error occurred in rest HTTPClientFor", err)
+		os.Exit(2)
 		return
 	}
 	dynamicClient, err := dynamic.NewForConfigAndClient(cfg, httpClient)
 	if err != nil {
 		impl.logger.Errorw("error in getting dynamic interface for resource", "err", err)
+		os.Exit(2)
 		return
 	}
 	ciCfg := &CiConfig{}
 	err = env.Parse(ciCfg)
 	if err != nil {
 		impl.logger.Errorw("error occurred while parsing ci config", err)
+		os.Exit(2)
 		return
 	}
 	var namespace string
@@ -108,6 +112,7 @@ func (impl *Informer) Start() {
 	err = env.Parse(cdCfg)
 	if err != nil {
 		impl.logger.Errorw("error occurred while parsing cd config", err)
+		os.Exit(2)
 		return
 	}
 	if cdCfg.CdInformer {
@@ -123,6 +128,7 @@ func (impl *Informer) Start() {
 	acdCfg := &AcdConfig{}
 	err = env.Parse(acdCfg)
 	if err != nil {
+		os.Exit(2)
 		return
 	}
 
