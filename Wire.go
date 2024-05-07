@@ -16,6 +16,8 @@ func InitializeApp() (*App, error) {
 		NewApp,
 		api.NewRouter,
 		monitoring.NewMonitoringRouter,
+		GetExternalConfig,
+		GetClusterConfig,
 	)
 	return &App{}, nil
 }

@@ -27,10 +27,12 @@ type App struct {
 	db              *pg.DB
 }
 
-func NewApp(MuxRouter *api.RouterImpl, Logger *zap.SugaredLogger) *App {
+func NewApp(MuxRouter *api.RouterImpl, Logger *zap.SugaredLogger, clusterCfg *controller.ClusterConfig, externalConfig *controller.ExternalConfig) *App {
 	return &App{
-		MuxRouter: MuxRouter,
-		Logger:    Logger,
+		MuxRouter:      MuxRouter,
+		Logger:         Logger,
+		clusterCfg:     clusterCfg,
+		externalConfig: externalConfig,
 	}
 }
 func (app *App) Start() {
@@ -38,45 +40,21 @@ func (app *App) Start() {
 	app.Logger.Infow("starting server on ", "port", port)
 	app.MuxRouter.Init()
 
-	clusterCfg := &controller.ClusterConfig{}
-	err := env.Parse(clusterCfg)
-	if err != nil {
-		app.Logger.Errorw("error in loading cluster config", "err", err)
-		os.Exit(2)
-	}
-	externalConfig := &controller.ExternalConfig{}
-	err = env.Parse(externalConfig)
-	if err != nil {
-		app.Logger.Errorw("error in loading external config", "err", err)
-		os.Exit(2)
-	}
-
-	app.clusterCfg = clusterCfg
-	app.externalConfig = externalConfig
-
 	var client *pubsub.PubSubClientServiceImpl
 
-	if !externalConfig.External {
+	if !app.externalConfig.External {
 		client = pubsub.NewPubSubClientServiceImpl(app.Logger)
 	}
 
-	if clusterCfg.ClusterType == controller.ClusterTypeAll && !externalConfig.External {
-		config, _ := sql.GetConfig()
-		app.db, err = sql.NewDbConnection(config, app.Logger)
-		if err != nil {
-			app.Logger.Errorw("error in loading external config", "err", err)
-			os.Exit(2)
-		}
-		clusterRepositoryImpl := repository.NewClusterRepositoryImpl(app.db, app.Logger)
-		app.k8sInformerImpl = informer.NewK8sInformerImpl(app.Logger, clusterRepositoryImpl, client)
-		err = app.k8sInformerImpl.BuildInformerForAllClusters()
+	if app.isClusterTypeAllAndIsInternalConfig() {
+		app.buildInformerForAllClusters(client)
 	}
 
 	startInformer := controller.NewStartController(app.Logger, client)
 	startInformer.Start()
 
 	app.server = &http.Server{Addr: fmt.Sprintf(":%d", port), Handler: app.MuxRouter.Router}
-	err = app.server.ListenAndServe()
+	err := app.server.ListenAndServe()
 	if err != nil {
 		app.Logger.Errorw("error in startup", "err", err)
 		os.Exit(2)
@@ -94,14 +72,47 @@ func (app *App) Stop() {
 		app.Logger.Errorw("error in mux router shutdown", "err", err)
 	}
 
-	if app.clusterCfg.ClusterType == controller.ClusterTypeAll && !app.externalConfig.External {
-		// Gracefully stop all Kubernetes informers
+	if app.isClusterTypeAllAndIsInternalConfig() {
 		app.k8sInformerImpl.StopAllSystemWorkflowInformer()
-
 		app.Logger.Infow("closing db connection")
 		err = app.db.Close()
 		if err != nil {
 			app.Logger.Errorw("Error while closing DB", "error", err)
 		}
 	}
+}
+
+func GetExternalConfig() (*controller.ExternalConfig, error) {
+	externalConfig := &controller.ExternalConfig{}
+	err := env.Parse(externalConfig)
+	if err != nil {
+		return nil, err
+	}
+	return externalConfig, err
+}
+
+func GetClusterConfig() (*controller.ClusterConfig, error) {
+	clusterCfg := &controller.ClusterConfig{}
+	err := env.Parse(clusterCfg)
+	if err != nil {
+		return nil, err
+	}
+	return clusterCfg, err
+}
+
+func (app *App) buildInformerForAllClusters(client *pubsub.PubSubClientServiceImpl) {
+	var err error
+	config, _ := sql.GetConfig()
+	app.db, err = sql.NewDbConnection(config, app.Logger)
+	if err != nil {
+		app.Logger.Errorw("error in loading external config", "err", err)
+		os.Exit(2)
+	}
+	clusterRepositoryImpl := repository.NewClusterRepositoryImpl(app.db, app.Logger)
+	app.k8sInformerImpl = informer.NewK8sInformerImpl(app.Logger, clusterRepositoryImpl, client)
+	err = app.k8sInformerImpl.BuildInformerForAllClusters()
+}
+
+func (app *App) isClusterTypeAllAndIsInternalConfig() bool {
+	return app.clusterCfg.ClusterType == controller.ClusterTypeAll && !app.externalConfig.External
 }
