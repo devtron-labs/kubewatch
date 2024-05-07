@@ -29,7 +29,6 @@ func main() {
 	if err != nil {
 		log.Panic(err)
 	}
-	go app.Start()
 	//     gracefulStop start
 	var gracefulStop = make(chan os.Signal)
 	signal.Notify(gracefulStop, syscall.SIGTERM)
@@ -41,4 +40,5 @@ func main() {
 		os.Exit(0)
 	}()
 	//      gracefulStop end
+	app.Start()
 }
