@@ -71,23 +71,23 @@ func NewStartController(logger *zap.SugaredLogger, client *pubsub.PubSubClientSe
 	}
 }
 
-func (impl *Informer) Start() error {
+func (impl *Informer) Start() {
 	cfg, _ := utils.GetDefaultK8sConfig("kubeconfig")
 	httpClient, err := rest.HTTPClientFor(cfg)
 	if err != nil {
 		impl.logger.Error("error occurred in rest HTTPClientFor", err)
-		return err
+		return
 	}
 	dynamicClient, err := dynamic.NewForConfigAndClient(cfg, httpClient)
 	if err != nil {
 		impl.logger.Errorw("error in getting dynamic interface for resource", "err", err)
-		return err
+		return
 	}
 	ciCfg := &CiConfig{}
 	err = env.Parse(ciCfg)
 	if err != nil {
 		impl.logger.Errorw("error occurred while parsing ci config", err)
-		return err
+		return
 	}
 	var namespace string
 	clusterCfg := &ClusterConfig{}
@@ -108,7 +108,7 @@ func (impl *Informer) Start() error {
 	err = env.Parse(cdCfg)
 	if err != nil {
 		impl.logger.Errorw("error occurred while parsing cd config", err)
-		return err
+		return
 	}
 	if cdCfg.CdInformer {
 		if impl.externalConfig.External {
@@ -123,7 +123,7 @@ func (impl *Informer) Start() error {
 	acdCfg := &AcdConfig{}
 	err = env.Parse(acdCfg)
 	if err != nil {
-		return err
+		return
 	}
 
 	if acdCfg.ACDInformer && !impl.externalConfig.External {
@@ -189,7 +189,6 @@ func (impl *Informer) Start() error {
 		defer close(appStopCh)
 		go acdInformer.Run(appStopCh)
 	}
-	return nil
 }
 
 func (impl *Informer) startWorkflowInformer(namespace string, eventName string, stopCh chan struct{}, dynamicClient dynamic.Interface, externalCD *ExternalConfig) {
