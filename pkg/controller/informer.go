@@ -17,6 +17,9 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 )
 
@@ -32,7 +35,7 @@ type CdConfig struct {
 
 // This is being used by CI as well as CD
 type ExternalConfig struct {
-	External    bool   `env:"CD_EXTERNAL_REST_LISTENER" envDefault:"false"`
+	External    bool   `env:"CD_EXTERNAL_REST_LISTENER" envDefault:"true"`
 	Token       string `env:"CD_EXTERNAL_ORCHESTRATOR_TOKEN" envDefault:""`
 	ListenerUrl string `env:"CD_EXTERNAL_LISTENER_URL" envDefault:"http://devtroncd-orchestrator-service-prod.devtroncd:80"`
 	Namespace   string `env:"CD_EXTERNAL_NAMESPACE" envDefault:""`
@@ -189,6 +192,10 @@ func (impl *Informer) Start() {
 		defer close(appStopCh)
 		go acdInformer.Run(appStopCh)
 	}
+	sigterm := make(chan os.Signal, 1)
+	signal.Notify(sigterm, syscall.SIGTERM)
+	signal.Notify(sigterm, syscall.SIGINT)
+	<-sigterm
 }
 
 func (impl *Informer) startWorkflowInformer(namespace string, eventName string, stopCh chan struct{}, dynamicClient dynamic.Interface, externalCD *ExternalConfig) {
