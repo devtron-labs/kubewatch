@@ -35,7 +35,7 @@ type CdConfig struct {
 
 // This is being used by CI as well as CD
 type ExternalConfig struct {
-	External    bool   `env:"CD_EXTERNAL_REST_LISTENER" envDefault:"true"`
+	External    bool   `env:"CD_EXTERNAL_REST_LISTENER" envDefault:"false"`
 	Token       string `env:"CD_EXTERNAL_ORCHESTRATOR_TOKEN" envDefault:""`
 	ListenerUrl string `env:"CD_EXTERNAL_LISTENER_URL" envDefault:"http://devtroncd-orchestrator-service-prod.devtroncd:80"`
 	Namespace   string `env:"CD_EXTERNAL_NAMESPACE" envDefault:""`
