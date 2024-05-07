@@ -42,8 +42,13 @@ func (app *App) Start() {
 
 	var client *pubsub.PubSubClientServiceImpl
 
+	var err error
 	if !app.externalConfig.External {
-		client = pubsub.NewPubSubClientServiceImpl(app.Logger)
+		client, err = pubsub.NewPubSubClientServiceImpl(app.Logger)
+		if err != nil {
+			app.Logger.Errorw("error in startup", "err", err)
+			os.Exit(2)
+		}
 	}
 
 	if app.isClusterTypeAllAndIsInternalConfig() {
@@ -54,7 +59,7 @@ func (app *App) Start() {
 	startInformer.Start()
 
 	app.server = &http.Server{Addr: fmt.Sprintf(":%d", port), Handler: app.MuxRouter.Router}
-	err := app.server.ListenAndServe()
+	err = app.server.ListenAndServe()
 	if err != nil {
 		app.Logger.Errorw("error in startup", "err", err)
 		os.Exit(2)
