@@ -40,16 +40,7 @@ func (app *App) Start() {
 	app.Logger.Infow("starting server on ", "port", port)
 	app.MuxRouter.Init()
 
-	var client *pubsub.PubSubClientServiceImpl
-
-	var err error
-	if !app.externalConfig.External {
-		client, err = pubsub.NewPubSubClientServiceImpl(app.Logger)
-		if err != nil {
-			app.Logger.Errorw("error in startup", "err", err)
-			os.Exit(2)
-		}
-	}
+	client := app.getPubSubClientForInternalConfig()
 
 	if app.isClusterTypeAllAndIsInternalConfig() {
 		app.buildInformerForAllClusters(client)
@@ -59,11 +50,24 @@ func (app *App) Start() {
 	startInformer.Start()
 
 	app.server = &http.Server{Addr: fmt.Sprintf(":%d", port), Handler: app.MuxRouter.Router}
-	err = app.server.ListenAndServe()
+	err := app.server.ListenAndServe()
 	if err != nil {
 		app.Logger.Errorw("error in startup", "err", err)
 		os.Exit(2)
 	}
+}
+
+func (app *App) getPubSubClientForInternalConfig() *pubsub.PubSubClientServiceImpl {
+
+	if app.externalConfig.External {
+		return nil
+	}
+	client, err := pubsub.NewPubSubClientServiceImpl(app.Logger)
+	if err != nil {
+		app.Logger.Errorw("error in startup", "err", err)
+		os.Exit(2)
+	}
+	return client
 }
 
 func (app *App) Stop() {
