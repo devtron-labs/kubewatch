@@ -53,7 +53,7 @@ func (app *App) Start() {
 		os.Exit(2)
 	}
 	startInformer := controller.NewStartController(app.Logger, client, app.externalConfig)
-	go startInformer.Start()
+	startInformer.Start()
 }
 
 func (app *App) getPubSubClientForInternalConfig() *pubsub.PubSubClientServiceImpl {
