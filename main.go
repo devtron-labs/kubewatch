@@ -38,11 +38,13 @@ func main() {
 	}
 
 	startInformer := controller.NewStartController(app.Logger, client, app.externalConfig)
-	startInformer.Start()
+	stopChan := make(chan int)
+	startInformer.Start(stopChan)
 	var gracefulStop = make(chan os.Signal)
 	signal.Notify(gracefulStop, syscall.SIGTERM)
 	signal.Notify(gracefulStop, syscall.SIGINT)
 	sig := <-gracefulStop
+	stopChan <- 0
 	fmt.Printf("caught sig: %+v", sig)
 	app.Stop()
 	os.Exit(0)

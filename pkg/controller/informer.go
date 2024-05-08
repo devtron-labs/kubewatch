@@ -72,7 +72,7 @@ func NewStartController(logger *zap.SugaredLogger, client *pubsub.PubSubClientSe
 	}
 }
 
-func (impl *Informer) Start() {
+func (impl *Informer) Start(stopChan <-chan int) {
 	cfg, _ := utils.GetDefaultK8sConfig("kubeconfig")
 	httpClient, err := rest.HTTPClientFor(cfg)
 	if err != nil {
@@ -195,6 +195,7 @@ func (impl *Informer) Start() {
 		defer close(appStopCh)
 		go acdInformer.Run(appStopCh)
 	}
+	<-stopChan
 }
 
 func (impl *Informer) startWorkflowInformer(namespace string, eventName string, stopCh chan struct{}, dynamicClient dynamic.Interface, externalCD *ExternalConfig) {
