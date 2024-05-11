@@ -9,6 +9,7 @@ import (
 	"github.com/argoproj/argo-workflows/v3/workflow/common"
 	pubsub "github.com/devtron-labs/common-lib/pubsub-lib"
 	repository "github.com/devtron-labs/kubewatch/pkg/cluster"
+	"github.com/devtron-labs/kubewatch/pkg/middleware"
 	"github.com/devtron-labs/kubewatch/pkg/utils"
 	"go.uber.org/zap"
 	coreV1 "k8s.io/api/core/v1"
@@ -122,6 +123,7 @@ func (impl *K8sInformerImpl) startClusterInformer() {
 	config := impl.DefaultK8sConfig
 	clusterClient, err := impl.getK8sClientForConfig(config)
 	if err != nil {
+		middleware.IncUnUnreachableClusterAPI(config.Host, config.APIPath, fmt.Sprint(err))
 		return
 	}
 
@@ -271,6 +273,7 @@ func (impl *K8sInformerImpl) startSystemWorkflowInformer(clusterId int) error {
 	impl.logger.Infow("starting informer for cluster", "clusterId", clusterInfo.Id, "clusterName", clusterInfo.ClusterName)
 	clusterClient, err := impl.getK8sClientForCluster(clusterInfo)
 	if err != nil {
+		middleware.IncUnUnreachableCluster(clusterInfo.ClusterName, strconv.Itoa(clusterInfo.Id), fmt.Sprint(err))
 		return err
 	}
 
