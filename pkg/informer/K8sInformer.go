@@ -123,7 +123,7 @@ func (impl *K8sInformerImpl) startClusterInformer() {
 	config := impl.DefaultK8sConfig
 	clusterClient, err := impl.getK8sClientForConfig(config)
 	if err != nil {
-		middleware.IncUnUnreachableClusterAPI(config.Host, config.APIPath, fmt.Sprint(err))
+		middleware.IncUnUnreachableClusterAPI(config.Host, config.APIPath)
 		return
 	}
 
@@ -273,7 +273,7 @@ func (impl *K8sInformerImpl) startSystemWorkflowInformer(clusterId int) error {
 	impl.logger.Infow("starting informer for cluster", "clusterId", clusterInfo.Id, "clusterName", clusterInfo.ClusterName)
 	clusterClient, err := impl.getK8sClientForCluster(clusterInfo)
 	if err != nil {
-		middleware.IncUnUnreachableCluster(clusterInfo.ClusterName, strconv.Itoa(clusterInfo.Id), fmt.Sprint(err))
+		middleware.IncUnUnreachableCluster(clusterInfo.ClusterName, strconv.Itoa(clusterInfo.Id))
 		return err
 	}
 

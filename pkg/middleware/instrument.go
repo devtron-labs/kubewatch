@@ -22,23 +22,37 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
+// metrics name constants
+const (
+	KUBEWATCH_UNREACHABLE_CLIENT_COUNT     = "Kubewatch_unreachable_client_count"
+	KUBEWATCH_UNREACHABLE_CLIENT_COUNT_API = "Kubewatch_unreachable_client_count_API"
+)
+
+// metrics labels constants
+const (
+	CLUSTER_NAME = "clusterName"
+	CLUSTER_ID   = "clusterId"
+	HOST         = "host"
+	PATH         = "path"
+)
+
 var UnreachableCluster = promauto.NewCounterVec(
 	prometheus.CounterOpts{
-		Name: "Kubewatch_unreachable_client_count",
+		Name: KUBEWATCH_UNREACHABLE_CLIENT_COUNT,
 		Help: "How many HTTP requests processed, partitioned by status code, method and HTTP path.",
 	},
-	[]string{"clusterName", "clusterId", "err"})
+	[]string{CLUSTER_NAME, CLUSTER_ID})
 
 var UnreachableClusterAPI = promauto.NewCounterVec(
 	prometheus.CounterOpts{
-		Name: "Kubewatch_unreachable_client_count_API",
+		Name: KUBEWATCH_UNREACHABLE_CLIENT_COUNT_API,
 		Help: "How many HTTP requests processed, partitioned by status code, method and HTTP path.",
 	},
-	[]string{"Host", "path", "err"})
+	[]string{HOST, PATH})
 
-func IncUnUnreachableCluster(clusterName, clusterId, err string) {
-	UnreachableCluster.WithLabelValues(clusterName, clusterId, err).Inc()
+func IncUnUnreachableCluster(clusterName, clusterId string) {
+	UnreachableCluster.WithLabelValues(clusterName, clusterId).Inc()
 }
-func IncUnUnreachableClusterAPI(host, path, err string) {
-	UnreachableClusterAPI.WithLabelValues(host, path, err).Inc()
+func IncUnUnreachableClusterAPI(host, path string) {
+	UnreachableClusterAPI.WithLabelValues(host, path).Inc()
 }
