@@ -265,7 +265,9 @@ func (impl *K8sInformerImpl) startSystemWorkflowInformer(clusterId int) error {
 		impl.logger.Errorw("error in fetching cluster", "clusterId", clusterId, "err", err)
 		return err
 	}
-
+	if len(clusterInfo.ErrorInConnecting) > 0 {
+		middleware.IncUnUnreachableCluster(clusterInfo.ClusterName, strconv.Itoa(clusterInfo.Id))
+	}
 	if _, ok := impl.informerStopper[clusterId]; ok {
 		impl.logger.Debug(fmt.Sprintf("informer for %s already exist", clusterInfo.ClusterName))
 		return errors.New(INFORMER_ALREADY_EXIST_MESSAGE)
@@ -280,7 +282,7 @@ func (impl *K8sInformerImpl) startSystemWorkflowInformer(clusterId int) error {
 	labelOptions := kubeinformers.WithTweakListOptions(func(opts *metav1.ListOptions) {
 		opts.LabelSelector = "devtron.ai/purpose==workflow"
 	})
-	informerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(clusterClient, 15*time.Minute, labelOptions)
+	informerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(clusterClient, 15*time.Second, labelOptions)
 	stopper := make(chan struct{})
 	podInformer := informerFactory.Core().V1().Pods()
 	podInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
