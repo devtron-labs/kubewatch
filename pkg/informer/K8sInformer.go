@@ -282,7 +282,7 @@ func (impl *K8sInformerImpl) startSystemWorkflowInformer(clusterId int) error {
 	labelOptions := kubeinformers.WithTweakListOptions(func(opts *metav1.ListOptions) {
 		opts.LabelSelector = "devtron.ai/purpose==workflow"
 	})
-	informerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(clusterClient, 15*time.Second, labelOptions)
+	informerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(clusterClient, 15*time.Minute, labelOptions)
 	stopper := make(chan struct{})
 	podInformer := informerFactory.Core().V1().Pods()
 	podInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
