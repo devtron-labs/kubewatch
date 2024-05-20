@@ -123,7 +123,7 @@ func (impl *K8sInformerImpl) startClusterInformer() {
 	config := impl.DefaultK8sConfig
 	clusterClient, err := impl.getK8sClientForConfig(config)
 	if err != nil {
-		middleware.IncUnUnreachableClusterAPI(config.Host, config.APIPath)
+		middleware.IncUnUnreachableCluster("Default cluster", "1")
 		return
 	}
 

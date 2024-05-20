@@ -43,16 +43,6 @@ var UnreachableCluster = promauto.NewCounterVec(
 	},
 	[]string{CLUSTER_NAME, CLUSTER_ID})
 
-var UnreachableClusterAPI = promauto.NewCounterVec(
-	prometheus.CounterOpts{
-		Name: KUBEWATCH_UNREACHABLE_CLIENT_COUNT_API,
-		Help: "How many HTTP requests processed, partitioned by status code, method and HTTP path.",
-	},
-	[]string{HOST, PATH})
-
 func IncUnUnreachableCluster(clusterName, clusterId string) {
 	UnreachableCluster.WithLabelValues(clusterName, clusterId).Inc()
-}
-func IncUnUnreachableClusterAPI(host, path string) {
-	UnreachableClusterAPI.WithLabelValues(host, path).Inc()
 }
