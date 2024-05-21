@@ -39,7 +39,7 @@ func main() {
 
 	startInformer := controller.NewStartController(app.Logger, client, app.externalConfig)
 	stopChan := make(chan int)
-	startInformer.Start(stopChan)
+	go startInformer.Start(stopChan)
 	var gracefulStop = make(chan os.Signal)
 	signal.Notify(gracefulStop, syscall.SIGTERM)
 	signal.Notify(gracefulStop, syscall.SIGINT)
