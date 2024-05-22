@@ -22,6 +22,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 )
 
 func main() {
@@ -45,5 +46,5 @@ func main() {
 	stopChan <- 0
 	app.Logger.Infow("caught sig: %+v", sig)
 	app.Stop()
-	os.Exit(0)
+	time.Sleep(app.defaultTimeout)
 }

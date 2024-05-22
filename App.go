@@ -25,14 +25,31 @@ type App struct {
 	clusterCfg      *controller.ClusterConfig
 	externalConfig  *controller.ExternalConfig
 	db              *pg.DB
+	defaultTimeout  time.Duration
+}
+
+type Timeout struct {
+	SleepTimeout int `env:"SLEEP_TIMEOUT" envDefault:"5"`
+}
+
+func GetTimeout() (*Timeout, error) {
+	cfg := &Timeout{}
+	err := env.Parse(cfg)
+	return cfg, err
 }
 
 func NewApp(MuxRouter *api.RouterImpl, Logger *zap.SugaredLogger, clusterCfg *controller.ClusterConfig, externalConfig *controller.ExternalConfig) *App {
+	timeout, err := GetTimeout()
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
 	return &App{
 		MuxRouter:      MuxRouter,
 		Logger:         Logger,
 		clusterCfg:     clusterCfg,
 		externalConfig: externalConfig,
+		defaultTimeout: time.Duration(timeout.SleepTimeout) * time.Second,
 	}
 }
 func (app *App) Start() {
@@ -65,7 +82,7 @@ func (app *App) Stop() {
 
 	app.Logger.Infow("kubewatch shutdown initiating")
 
-	timeoutContext, _ := context.WithTimeout(context.Background(), 5*time.Second)
+	timeoutContext, _ := context.WithTimeout(context.Background(), app.defaultTimeout)
 	app.Logger.Infow("closing router")
 	err := app.server.Shutdown(timeoutContext)
 	if err != nil {
