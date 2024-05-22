@@ -71,6 +71,7 @@ func (app *App) Stop() {
 	if err != nil {
 		app.Logger.Errorw("error in mux router shutdown", "err", err)
 	}
+	app.Logger.Infow("router closed successfully")
 
 	if app.isClusterTypeAllAndIsInternalConfig() {
 		app.k8sInformerImpl.StopAllSystemWorkflowInformer()
@@ -79,6 +80,7 @@ func (app *App) Stop() {
 		if err != nil {
 			app.Logger.Errorw("Error while closing DB", "error", err)
 		}
+		app.Logger.Infow("db closed successfully")
 	}
 }
 

@@ -17,7 +17,6 @@ limitations under the License.
 package main
 
 import (
-	"fmt"
 	"github.com/devtron-labs/kubewatch/pkg/controller"
 	"log"
 	"os"
@@ -41,12 +40,10 @@ func main() {
 	stopChan := make(chan int)
 	go startInformer.Start(stopChan)
 	var gracefulStop = make(chan os.Signal)
-	signal.Notify(gracefulStop, syscall.SIGTERM)
-	signal.Notify(gracefulStop, syscall.SIGINT)
+	signal.Notify(gracefulStop, syscall.SIGTERM, syscall.SIGINT)
 	sig := <-gracefulStop
 	stopChan <- 0
-	fmt.Printf("caught sig: %+v", sig)
+	app.Logger.Infow("caught sig: %+v", sig)
 	app.Stop()
 	os.Exit(0)
-
 }
