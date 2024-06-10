@@ -17,11 +17,13 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	api "github.com/devtron-labs/kubewatch/api/router"
 	"go.uber.org/zap"
 	"net/http"
 	"os"
+	"time"
 )
 
 type App struct {
@@ -47,4 +49,22 @@ func (app *App) Start() {
 		app.Logger.Errorw("error in startup", "err", err)
 		os.Exit(2)
 	}
+}
+
+func (app *App) Stop() {
+
+	app.Logger.Infow("kubewatch shutdown initiating")
+
+	timeoutContext, _ := context.WithTimeout(context.Background(), 5*time.Second)
+	app.Logger.Infow("closing router")
+	err := app.server.Shutdown(timeoutContext)
+	if err != nil {
+		app.Logger.Errorw("error in mux router shutdown", "err", err)
+	}
+
+	app.Logger.Infow("closing db connection")
+	if err != nil {
+		app.Logger.Errorw("Error while closing DB", "error", err)
+	}
+
 }
