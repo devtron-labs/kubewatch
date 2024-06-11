@@ -1,3 +1,19 @@
+/*
+ * Copyright (c) 2024. Devtron Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package informer
 
 import (
@@ -9,6 +25,7 @@ import (
 	"github.com/argoproj/argo-workflows/v3/workflow/common"
 	pubsub "github.com/devtron-labs/common-lib/pubsub-lib"
 	repository "github.com/devtron-labs/kubewatch/pkg/cluster"
+	"github.com/devtron-labs/kubewatch/pkg/middleware"
 	"github.com/devtron-labs/kubewatch/pkg/utils"
 	"go.uber.org/zap"
 	coreV1 "k8s.io/api/core/v1"
@@ -122,6 +139,7 @@ func (impl *K8sInformerImpl) startClusterInformer() {
 	config := impl.DefaultK8sConfig
 	clusterClient, err := impl.getK8sClientForConfig(config)
 	if err != nil {
+		middleware.IncUnUnreachableCluster("Default cluster", "1")
 		return
 	}
 
@@ -263,7 +281,9 @@ func (impl *K8sInformerImpl) startSystemWorkflowInformer(clusterId int) error {
 		impl.logger.Errorw("error in fetching cluster", "clusterId", clusterId, "err", err)
 		return err
 	}
-
+	if len(clusterInfo.ErrorInConnecting) > 0 {
+		middleware.IncUnUnreachableCluster(clusterInfo.ClusterName, strconv.Itoa(clusterInfo.Id))
+	}
 	if _, ok := impl.informerStopper[clusterId]; ok {
 		impl.logger.Debug(fmt.Sprintf("informer for %s already exist", clusterInfo.ClusterName))
 		return errors.New(INFORMER_ALREADY_EXIST_MESSAGE)
@@ -271,6 +291,7 @@ func (impl *K8sInformerImpl) startSystemWorkflowInformer(clusterId int) error {
 	impl.logger.Infow("starting informer for cluster", "clusterId", clusterInfo.Id, "clusterName", clusterInfo.ClusterName)
 	clusterClient, err := impl.getK8sClientForCluster(clusterInfo)
 	if err != nil {
+		middleware.IncUnUnreachableCluster(clusterInfo.ClusterName, strconv.Itoa(clusterInfo.Id))
 		return err
 	}
 
