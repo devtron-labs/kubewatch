@@ -117,6 +117,8 @@ func (app *App) Stop() {
 		}
 		app.Logger.Infow("db closed successfully")
 	}
+
+	app.Logger.Infow("kubewatch closed successfully")
 }
 
 func GetExternalConfig() (*controller.ExternalConfig, error) {
