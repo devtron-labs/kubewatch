@@ -28,6 +28,7 @@ import (
 	"github.com/devtron-labs/kubewatch/pkg/middleware"
 	"github.com/devtron-labs/kubewatch/pkg/utils"
 	"go.uber.org/zap"
+	"golang.org/x/exp/maps"
 	coreV1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -270,6 +271,13 @@ func (impl *K8sInformerImpl) stopSystemWorkflowInformer(clusterId int) {
 	if stopper != nil {
 		close(stopper)
 		delete(impl.informerStopper, clusterId)
+	}
+	return
+}
+
+func (impl *K8sInformerImpl) StopAllSystemWorkflowInformer() {
+	for _, clusterId := range maps.Keys(impl.informerStopper) {
+		impl.stopSystemWorkflowInformer(clusterId)
 	}
 	return
 }
