@@ -24,6 +24,7 @@ import (
 	"github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
 	"github.com/argoproj/argo-workflows/v3/workflow/common"
 	pubsub "github.com/devtron-labs/common-lib/pubsub-lib"
+	k8s1 "github.com/devtron-labs/common-lib/utils/k8s"
 	repository "github.com/devtron-labs/kubewatch/pkg/cluster"
 	"github.com/devtron-labs/kubewatch/pkg/middleware"
 	"github.com/devtron-labs/kubewatch/pkg/utils"
@@ -70,15 +71,16 @@ type K8sInformer interface {
 }
 
 type K8sInformerImpl struct {
-	logger            *zap.SugaredLogger
-	mutex             sync.Mutex
-	informerStopper   map[int]chan struct{}
-	clusterRepository repository.ClusterRepository
-	DefaultK8sConfig  *rest.Config
-	pubSubClient      *pubsub.PubSubClientServiceImpl
+	logger              *zap.SugaredLogger
+	mutex               sync.Mutex
+	informerStopper     map[int]chan struct{}
+	clusterRepository   repository.ClusterRepository
+	DefaultK8sConfig    *rest.Config
+	pubSubClient        *pubsub.PubSubClientServiceImpl
+	httpTransportConfig *k8s1.CustomK8sHttpTransportConfig
 }
 
-func NewK8sInformerImpl(logger *zap.SugaredLogger, clusterRepository repository.ClusterRepository, client *pubsub.PubSubClientServiceImpl) *K8sInformerImpl {
+func NewK8sInformerImpl(logger *zap.SugaredLogger, clusterRepository repository.ClusterRepository, client *pubsub.PubSubClientServiceImpl, httpTransportConfig *k8s1.CustomK8sHttpTransportConfig) *K8sInformerImpl {
 	informerFactory := &K8sInformerImpl{
 		logger:            logger,
 		clusterRepository: clusterRepository,
@@ -86,6 +88,7 @@ func NewK8sInformerImpl(logger *zap.SugaredLogger, clusterRepository repository.
 	}
 	defaultK8sConfig, _ := utils.GetDefaultK8sConfig("kubeconfigK8s")
 	informerFactory.DefaultK8sConfig = defaultK8sConfig
+	informerFactory.httpTransportConfig = httpTransportConfig
 	informerFactory.informerStopper = make(map[int]chan struct{})
 	return informerFactory
 }
@@ -176,6 +179,13 @@ func (impl *K8sInformerImpl) startClusterInformer() {
 }
 
 func (impl *K8sInformerImpl) getK8sClientForConfig(config *rest.Config) (*kubernetes.Clientset, error) {
+
+	var err error
+	config, err = impl.httpTransportConfig.OverrideConfigWithCustomTransport(config)
+	if err != nil {
+		impl.logger.Errorw("error in overriding config with custom transport", "err", err)
+		return nil, err
+	}
 	httpClientFor, err := rest.HTTPClientFor(config)
 	if err != nil {
 		impl.logger.Errorw("error occurred while overriding k8s pubSubClient", "reason", err)

@@ -17,6 +17,8 @@
 package main
 
 import (
+	"github.com/caarlos0/env/v6"
+	k8s1 "github.com/devtron-labs/common-lib/utils/k8s"
 	"github.com/devtron-labs/kubewatch/pkg/controller"
 	"log"
 	"os"
@@ -33,11 +35,17 @@ func main() {
 	go app.Start()
 	client := app.getPubSubClientForInternalConfig()
 
-	if app.isClusterTypeAllAndIsInternalConfig() {
-		app.buildInformerForAllClusters(client)
+	httpTransportConfig := &k8s1.CustomK8sHttpTransportConfig{}
+	err = env.Parse(httpTransportConfig)
+	if err != nil {
+		app.Logger.Warnw("error in parsing custom k8s http transport config", "err", err)
 	}
 
-	startInformer := controller.NewStartController(app.Logger, client, app.externalConfig)
+	if app.isClusterTypeAllAndIsInternalConfig() {
+		app.buildInformerForAllClusters(client, httpTransportConfig)
+	}
+
+	startInformer := controller.NewStartController(app.Logger, client, app.externalConfig, httpTransportConfig)
 	stopChan := make(chan int)
 	go startInformer.Start(stopChan)
 	var gracefulStop = make(chan os.Signal)

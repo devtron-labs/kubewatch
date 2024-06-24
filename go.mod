@@ -34,7 +34,7 @@ require (
 )
 
 require (
-	github.com/devtron-labs/common-lib v0.0.20-0.20240624130226-c3cf434cc540
+	github.com/devtron-labs/common-lib v0.0.20-0.20240624190412-529eefbeae62
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/wire v0.6.0
 	github.com/imdario/mergo v0.3.16 // indirect
@@ -74,11 +74,14 @@ require (
 	github.com/bmatcuk/doublestar/v4 v4.6.0 // indirect
 	github.com/bombsimon/logrusr/v2 v2.0.1 // indirect
 	github.com/bradleyfalzon/ghinstallation/v2 v2.5.0 // indirect
+	github.com/caarlos0/env/v6 v6.7.2 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/chai2010/gettext-go v1.0.2 // indirect
 	github.com/cloudflare/circl v1.3.7 // indirect
 	github.com/colinmarc/hdfs v1.1.4-0.20180805212432-9746310a4d31 // indirect
+	github.com/coreos/go-oidc v2.2.1+incompatible // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/devtron-labs/authenticator v0.4.31 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/docker/distribution v2.8.2+incompatible // indirect
 	github.com/doublerebel/bellows v0.0.0-20160303004610-f177d92a03d3 // indirect
@@ -87,6 +90,7 @@ require (
 	github.com/evanphx/json-patch v5.6.0+incompatible // indirect
 	github.com/exponent-io/jsonpath v0.0.0-20151013193312-d6023ce2651d // indirect
 	github.com/fatih/camelcase v1.0.0 // indirect
+	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/fvbommel/sortorder v1.0.1 // indirect
 	github.com/go-errors/errors v1.4.2 // indirect
@@ -94,6 +98,7 @@ require (
 	github.com/go-git/go-billy/v5 v5.5.0 // indirect
 	github.com/go-git/go-git/v5 v5.11.0 // indirect
 	github.com/go-logr/logr v1.3.0 // indirect
+	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-openapi/jsonpointer v0.19.6 // indirect
 	github.com/go-openapi/jsonreference v0.20.2 // indirect
 	github.com/go-openapi/swag v0.22.3 // indirect
@@ -152,6 +157,7 @@ require (
 	github.com/pjbgf/sha1cd v0.3.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/pquerna/cachecontrol v0.1.0 // indirect
 	github.com/prometheus/client_model v0.4.1-0.20230718164431-9a2bf3000d16 // indirect
 	github.com/prometheus/common v0.44.0 // indirect
 	github.com/prometheus/procfs v0.11.1 // indirect
@@ -172,6 +178,10 @@ require (
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	github.com/xlab/treeprint v1.1.0 // indirect
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.45.0 // indirect
+	go.opentelemetry.io/otel v1.19.0 // indirect
+	go.opentelemetry.io/otel/metric v1.19.0 // indirect
+	go.opentelemetry.io/otel/trace v1.19.0 // indirect
 	go.starlark.net v0.0.0-20220328144851-d1966c6b9fcd // indirect
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
@@ -192,6 +202,7 @@ require (
 	gopkg.in/jcmturner/goidentity.v2 v2.0.0 // indirect
 	gopkg.in/jcmturner/gokrb5.v5 v5.3.0 // indirect
 	gopkg.in/jcmturner/rpc.v0 v0.0.2 // indirect
+	gopkg.in/square/go-jose.v2 v2.6.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/apiextensions-apiserver v0.26.4 // indirect
@@ -204,6 +215,7 @@ require (
 	k8s.io/kube-openapi v0.0.0-20231010175941-2dd684a91f00 // indirect
 	k8s.io/kubectl v0.29.0 // indirect
 	k8s.io/kubernetes v1.26.11 // indirect
+	k8s.io/metrics v0.26.4 // indirect
 	oras.land/oras-go/v2 v2.2.0 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/kustomize/api v0.12.1 // indirect
