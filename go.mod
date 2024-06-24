@@ -36,7 +36,7 @@ require (
 )
 
 require (
-	github.com/devtron-labs/common-lib v0.0.20-0.20240624084400-555b0938dee8
+	github.com/devtron-labs/common-lib v0.0.20-0.20240624105554-349c152dcbe7
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/wire v0.6.0
 	github.com/imdario/mergo v0.3.16 // indirect
