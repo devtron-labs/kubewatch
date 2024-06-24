@@ -105,7 +105,6 @@ require (
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/btree v1.1.2 // indirect
 	github.com/google/gnostic v0.6.9 // indirect
-	github.com/google/gnostic-models v0.6.8 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/go-github/v53 v53.0.0 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
@@ -215,6 +214,7 @@ require (
 )
 
 replace (
+	github.com/googleapis/gnostic => github.com/google/gnostic v0.6.9
 	k8s.io/api => k8s.io/api v0.26.4
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.26.4
 	k8s.io/apimachinery => k8s.io/apimachinery v0.26.4
@@ -231,13 +231,19 @@ replace (
 	k8s.io/csi-translation-lib => k8s.io/csi-translation-lib v0.26.4
 	k8s.io/kube-aggregator => k8s.io/kube-aggregator v0.26.4
 	k8s.io/kube-controller-manager => k8s.io/kube-controller-manager v0.26.4
+	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20221012153701-172d655c2280
 	k8s.io/kube-proxy => k8s.io/kube-proxy v0.26.4
 	k8s.io/kube-scheduler => k8s.io/kube-scheduler v0.26.4
 	k8s.io/kubectl => k8s.io/kubectl v0.26.4
 	k8s.io/kubelet => k8s.io/kubelet v0.26.4
+	k8s.io/kubernetes v1.27.13 => k8s.io/kubernetes v1.26.11
 	k8s.io/legacy-cloud-providers => k8s.io/legacy-cloud-providers v0.26.4
 	k8s.io/metrics => k8s.io/metrics v0.26.4
 	k8s.io/mount-utils => k8s.io/mount-utils v0.26.4
 	k8s.io/pod-security-admission => k8s.io/pod-security-admission v0.26.4
 	k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.26.4
+	sigs.k8s.io/json => sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
+	sigs.k8s.io/kustomize/api => sigs.k8s.io/kustomize/api v0.12.1 // indirect
+	sigs.k8s.io/kustomize/kyaml => sigs.k8s.io/kustomize/kyaml v0.13.9 // indirect
+	sigs.k8s.io/structured-merge-diff/v4 => sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 )
