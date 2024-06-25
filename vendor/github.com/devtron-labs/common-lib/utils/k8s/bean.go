@@ -18,6 +18,7 @@ package k8s
 
 import (
 	"fmt"
+	"github.com/caarlos0/env"
 	"github.com/devtron-labs/common-lib/utils/k8sObjectsUtil"
 	"github.com/devtron-labs/common-lib/utils/remoteConnection/bean"
 	v1 "k8s.io/api/core/v1"
@@ -27,6 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/client-go/rest"
+	"log"
 	"net"
 	"net/http"
 	"time"
@@ -176,6 +178,15 @@ type CustomK8sHttpTransportConfig struct {
 	KeepAlive           int  `env:"K8s_TCP_KEEPALIVE" envDefault:"30"`
 	TLSHandshakeTimeout int  `env:"K8s_TLS_HANDSHAKE_TIMEOUT" envDefault:"10"`
 	MaxIdleConnsPerHost int  `env:"K8s_CLIENT_MAX_IDLE_CONNS_PER_SECOND" envDefault:"25"`
+}
+
+func NewCustomK8sHttpTransportConfig() *CustomK8sHttpTransportConfig {
+	customK8sHttpTransportConfig := &CustomK8sHttpTransportConfig{}
+	err := env.Parse(customK8sHttpTransportConfig)
+	if err != nil {
+		log.Println("error in parsing custom k8s http configurations from env : ", "err : ", err)
+	}
+	return customK8sHttpTransportConfig
 }
 
 // OverrideConfigWithCustomTransport

@@ -78,13 +78,6 @@ func NewStartController(logger *zap.SugaredLogger, client *pubsub.PubSubClientSe
 func (impl *Informer) Start(stopChan <-chan int) {
 	cfg, _ := utils.GetDefaultK8sConfig("kubeconfig")
 
-	var err error
-	cfg, err = impl.httpTransportConfig.OverrideConfigWithCustomTransport(cfg)
-	if err != nil {
-		impl.logger.Errorw("error in overriding config with custom transport", "err", err)
-		return
-	}
-
 	httpClient, err := rest.HTTPClientFor(cfg)
 	if err != nil {
 		impl.logger.Error("error occurred in rest HTTPClientFor", err)
