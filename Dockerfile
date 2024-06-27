@@ -14,7 +14,7 @@ RUN apk add --update ca-certificates
 
 RUN adduser -D devtron
 
-COPY --from=build-env  /go/src/github.com/devtron-labs/kubewatch .
+COPY --from=build-env  /go/src/github.com/devtron-labs/kubewatch/kubewatch .
 
 RUN chown devtron:devtron ./kubewatch
 
