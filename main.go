@@ -17,8 +17,12 @@
 package main
 
 import (
-	"github.com/devtron-labs/kubewatch/cmd"
+	"github.com/devtron-labs/kubewatch/pkg/controller"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 )
 
 func main() {
@@ -27,5 +31,20 @@ func main() {
 		log.Panic(err)
 	}
 	go app.Start()
-	cmd.Execute()
+	client := app.getPubSubClientForInternalConfig()
+
+	if app.isClusterTypeAllAndIsInternalConfig() {
+		app.buildInformerForAllClusters(client)
+	}
+
+	startInformer := controller.NewStartController(app.Logger, client, app.externalConfig)
+	stopChan := make(chan int)
+	go startInformer.Start(stopChan)
+	var gracefulStop = make(chan os.Signal)
+	signal.Notify(gracefulStop, syscall.SIGTERM, syscall.SIGINT)
+	sig := <-gracefulStop
+	stopChan <- 0
+	app.Logger.Infow("caught sig: %+v", sig)
+	app.Stop()
+	time.Sleep(app.defaultTimeout)
 }

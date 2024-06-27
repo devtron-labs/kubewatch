@@ -18,6 +18,14 @@ func InitializeApp() (*App, error) {
 	sugaredLogger := logger.NewSugaredLogger()
 	monitoringRouter := monitoring.NewMonitoringRouter(sugaredLogger)
 	routerImpl := api.NewRouter(sugaredLogger, monitoringRouter)
-	app := NewApp(routerImpl, sugaredLogger)
+	clusterConfig, err := GetClusterConfig()
+	if err != nil {
+		return nil, err
+	}
+	externalConfig, err := GetExternalConfig()
+	if err != nil {
+		return nil, err
+	}
+	app := NewApp(routerImpl, sugaredLogger, clusterConfig, externalConfig)
 	return app, nil
 }
