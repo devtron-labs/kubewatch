@@ -9,6 +9,7 @@ import (
 	"github.com/argoproj/argo-workflows/v3/workflow/util"
 	"github.com/caarlos0/env"
 	pubsub "github.com/devtron-labs/common-lib/pubsub-lib"
+	k8s1 "github.com/devtron-labs/common-lib/utils/k8s"
 	"github.com/devtron-labs/kubewatch/pkg/utils"
 	"github.com/go-resty/resty/v2"
 	"go.uber.org/zap"
@@ -59,21 +60,24 @@ const cronMinuteWiseEventName string = "minute-event"
 const ClusterTypeAll string = "ALL_CLUSTER"
 
 type Informer struct {
-	logger         *zap.SugaredLogger
-	client         *pubsub.PubSubClientServiceImpl
-	externalConfig *ExternalConfig
+	logger              *zap.SugaredLogger
+	client              *pubsub.PubSubClientServiceImpl
+	externalConfig      *ExternalConfig
+	httpTransportConfig *k8s1.CustomK8sHttpTransportConfig
 }
 
-func NewStartController(logger *zap.SugaredLogger, client *pubsub.PubSubClientServiceImpl, externalConfig *ExternalConfig) *Informer {
+func NewStartController(logger *zap.SugaredLogger, client *pubsub.PubSubClientServiceImpl, externalConfig *ExternalConfig, httpTransportConfig *k8s1.CustomK8sHttpTransportConfig) *Informer {
 	return &Informer{
-		logger:         logger,
-		client:         client,
-		externalConfig: externalConfig,
+		logger:              logger,
+		client:              client,
+		externalConfig:      externalConfig,
+		httpTransportConfig: httpTransportConfig,
 	}
 }
 
 func (impl *Informer) Start(stopChan <-chan int) {
 	cfg, _ := utils.GetDefaultK8sConfig("kubeconfig")
+
 	httpClient, err := rest.HTTPClientFor(cfg)
 	if err != nil {
 		impl.logger.Error("error occurred in rest HTTPClientFor", err)

@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"github.com/caarlos0/env"
 	pubsub "github.com/devtron-labs/common-lib/pubsub-lib"
+	k8s1 "github.com/devtron-labs/common-lib/utils/k8s"
 	api "github.com/devtron-labs/kubewatch/api/router"
 	repository "github.com/devtron-labs/kubewatch/pkg/cluster"
 	"github.com/devtron-labs/kubewatch/pkg/controller"
@@ -139,7 +140,7 @@ func GetClusterConfig() (*controller.ClusterConfig, error) {
 	return clusterCfg, err
 }
 
-func (app *App) buildInformerForAllClusters(client *pubsub.PubSubClientServiceImpl) {
+func (app *App) buildInformerForAllClusters(client *pubsub.PubSubClientServiceImpl, httpTransportConfig *k8s1.CustomK8sHttpTransportConfig) {
 	var err error
 	config, _ := sql.GetConfig()
 	app.db, err = sql.NewDbConnection(config, app.Logger)
@@ -148,7 +149,7 @@ func (app *App) buildInformerForAllClusters(client *pubsub.PubSubClientServiceIm
 		os.Exit(2)
 	}
 	clusterRepositoryImpl := repository.NewClusterRepositoryImpl(app.db, app.Logger)
-	app.k8sInformerImpl = informer.NewK8sInformerImpl(app.Logger, clusterRepositoryImpl, client)
+	app.k8sInformerImpl = informer.NewK8sInformerImpl(app.Logger, clusterRepositoryImpl, client, httpTransportConfig)
 	err = app.k8sInformerImpl.BuildInformerForAllClusters()
 }
 
