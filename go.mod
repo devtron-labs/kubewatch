@@ -6,7 +6,6 @@ require (
 	github.com/argoproj/argo-cd/v2 v2.8.17
 	github.com/argoproj/argo-workflows/v3 v3.4.7
 	github.com/caarlos0/env v3.5.0+incompatible
-	github.com/caarlos0/env/v6 v6.7.2
 	github.com/go-pg/pg v6.15.1+incompatible
 	github.com/go-resty/resty/v2 v2.7.0
 	github.com/gorilla/mux v1.8.0
@@ -35,7 +34,7 @@ require (
 )
 
 require (
-	github.com/devtron-labs/common-lib v0.0.21-0.20240628105542-603b4f777e00
+	github.com/devtron-labs/common-lib v0.0.22-0.20240705073412-32e32c499160
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/wire v0.6.0
 	github.com/imdario/mergo v0.3.16 // indirect
@@ -75,6 +74,7 @@ require (
 	github.com/bmatcuk/doublestar/v4 v4.6.0 // indirect
 	github.com/bombsimon/logrusr/v2 v2.0.1 // indirect
 	github.com/bradleyfalzon/ghinstallation/v2 v2.5.0 // indirect
+	github.com/caarlos0/env/v6 v6.7.2 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/chai2010/gettext-go v1.0.2 // indirect
 	github.com/cloudflare/circl v1.3.7 // indirect
