@@ -36,7 +36,7 @@ require (
 )
 
 require (
-	github.com/devtron-labs/common-lib v0.0.25-0.20240801095114-500b0df1bef3
+	github.com/devtron-labs/common-lib v0.0.25-0.20240801145937-bde73d0d361d
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/wire v0.6.0
 	github.com/imdario/mergo v0.3.16 // indirect
@@ -213,7 +213,7 @@ require (
 	k8s.io/kube-aggregator v0.26.4 // indirect
 	k8s.io/kube-openapi v0.0.0-20231010175941-2dd684a91f00 // indirect
 	k8s.io/kubectl v0.29.0 // indirect
-	k8s.io/kubernetes v1.26.11 // indirect
+	k8s.io/kubernetes v1.27.13 // indirect
 	k8s.io/metrics v0.26.4 // indirect
 	oras.land/oras-go/v2 v2.2.0 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
