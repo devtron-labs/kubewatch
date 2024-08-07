@@ -174,9 +174,6 @@ github.com/bradleyfalzon/ghinstallation/v2
 # github.com/caarlos0/env v3.5.0+incompatible
 ## explicit
 github.com/caarlos0/env
-# github.com/caarlos0/env/v6 v6.7.2
-## explicit; go 1.17
-github.com/caarlos0/env/v6
 # github.com/cespare/xxhash/v2 v2.2.0
 ## explicit; go 1.11
 github.com/cespare/xxhash/v2
@@ -206,20 +203,13 @@ github.com/colinmarc/hdfs
 github.com/colinmarc/hdfs/protocol/hadoop_common
 github.com/colinmarc/hdfs/protocol/hadoop_hdfs
 github.com/colinmarc/hdfs/rpc
-# github.com/coreos/go-oidc/v3 v3.11.0
-## explicit; go 1.21
-github.com/coreos/go-oidc/v3/oidc
 # github.com/cyphar/filepath-securejoin v0.2.4
 ## explicit; go 1.13
 github.com/cyphar/filepath-securejoin
 # github.com/davecgh/go-spew v1.1.1
 ## explicit
 github.com/davecgh/go-spew/spew
-# github.com/devtron-labs/authenticator v0.4.35-0.20240731093814-ae0cb999d5d0
-## explicit; go 1.21
-github.com/devtron-labs/authenticator/client
-github.com/devtron-labs/authenticator/oidc
-# github.com/devtron-labs/common-lib v0.0.25-0.20240801145937-bde73d0d361d
+# github.com/devtron-labs/common-lib v0.0.25-0.20240807073255-b912ce72119f
 ## explicit; go 1.21
 github.com/devtron-labs/common-lib/constants
 github.com/devtron-labs/common-lib/monitoring
@@ -341,11 +331,6 @@ github.com/go-git/go-git/v5/utils/merkletrie/internal/frame
 github.com/go-git/go-git/v5/utils/merkletrie/noder
 github.com/go-git/go-git/v5/utils/sync
 github.com/go-git/go-git/v5/utils/trace
-# github.com/go-jose/go-jose/v4 v4.0.2
-## explicit; go 1.21
-github.com/go-jose/go-jose/v4
-github.com/go-jose/go-jose/v4/cipher
-github.com/go-jose/go-jose/v4/json
 # github.com/go-logr/logr v1.3.0
 ## explicit; go 1.18
 github.com/go-logr/logr

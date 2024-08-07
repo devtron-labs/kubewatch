@@ -34,7 +34,7 @@ require (
 )
 
 require (
-	github.com/devtron-labs/common-lib v0.0.25-0.20240801145937-bde73d0d361d
+	github.com/devtron-labs/common-lib v0.0.25-0.20240807073255-b912ce72119f
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/wire v0.6.0
 	github.com/imdario/mergo v0.3.16 // indirect
@@ -73,14 +73,11 @@ require (
 	github.com/bmatcuk/doublestar/v4 v4.6.0 // indirect
 	github.com/bombsimon/logrusr/v2 v2.0.1 // indirect
 	github.com/bradleyfalzon/ghinstallation/v2 v2.5.0 // indirect
-	github.com/caarlos0/env/v6 v6.7.2 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/chai2010/gettext-go v1.0.2 // indirect
 	github.com/cloudflare/circl v1.3.7 // indirect
 	github.com/colinmarc/hdfs v1.1.4-0.20180805212432-9746310a4d31 // indirect
-	github.com/coreos/go-oidc/v3 v3.11.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/devtron-labs/authenticator v0.4.35-0.20240731093814-ae0cb999d5d0 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/docker/distribution v2.8.2+incompatible // indirect
 	github.com/doublerebel/bellows v0.0.0-20160303004610-f177d92a03d3 // indirect
@@ -96,7 +93,6 @@ require (
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
 	github.com/go-git/go-billy/v5 v5.5.0 // indirect
 	github.com/go-git/go-git/v5 v5.11.0 // indirect
-	github.com/go-jose/go-jose/v4 v4.0.2 // indirect
 	github.com/go-logr/logr v1.3.0 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-openapi/jsonpointer v0.19.6 // indirect
