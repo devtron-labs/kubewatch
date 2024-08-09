@@ -1,6 +1,8 @@
 module github.com/devtron-labs/kubewatch
 
-go 1.20
+go 1.21
+
+toolchain go1.21.0
 
 require (
 	github.com/argoproj/argo-cd/v2 v2.8.17
@@ -34,7 +36,7 @@ require (
 )
 
 require (
-	github.com/devtron-labs/common-lib v0.0.25-0.20240807073255-b912ce72119f
+	github.com/devtron-labs/common-lib v0.0.25-0.20240809073131-5cefb0e8a93a
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/wire v0.6.0
 	github.com/imdario/mergo v0.3.16 // indirect
