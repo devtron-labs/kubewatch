@@ -1,8 +1,6 @@
 module github.com/devtron-labs/kubewatch
 
-go 1.21
-
-toolchain go1.21.0
+go 1.20
 
 require (
 	github.com/argoproj/argo-cd/v2 v2.8.17
