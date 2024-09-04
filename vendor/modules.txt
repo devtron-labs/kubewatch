@@ -209,7 +209,7 @@ github.com/cyphar/filepath-securejoin
 # github.com/davecgh/go-spew v1.1.1
 ## explicit
 github.com/davecgh/go-spew/spew
-# github.com/devtron-labs/common-lib v0.0.25-0.20240809073131-5cefb0e8a93a
+# github.com/devtron-labs/common-lib v0.16.1-0.20240904133334-7918e7c25b63
 ## explicit; go 1.21
 github.com/devtron-labs/common-lib/constants
 github.com/devtron-labs/common-lib/monitoring
@@ -229,6 +229,9 @@ github.com/devtron-labs/common-lib/utils/yaml
 # github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f
 ## explicit
 github.com/dgryski/go-rendezvous
+# github.com/docker/cli v24.0.6+incompatible
+## explicit
+github.com/docker/cli/cli/config/types
 # github.com/docker/distribution v2.8.2+incompatible
 ## explicit
 github.com/docker/distribution/digestset

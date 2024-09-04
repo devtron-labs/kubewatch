@@ -138,10 +138,12 @@ github.com/cyphar/filepath-securejoin v0.2.4/go.mod h1:aPGpWjXOXUn2NCNjFvBE6aRxG
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/devtron-labs/common-lib v0.0.25-0.20240809073131-5cefb0e8a93a h1:VebYW3ZIz85sZedsG1wRAaV3V4B2Bx26XXpG8T9VfAA=
-github.com/devtron-labs/common-lib v0.0.25-0.20240809073131-5cefb0e8a93a/go.mod h1:a7aCClaxYfnyYEENSe1RnkQCeW2AwmCAPYsuvgk0aW0=
+github.com/devtron-labs/common-lib v0.16.1-0.20240904133334-7918e7c25b63 h1:C5SMozwP2rVIKItqEZs3PtWkBhNnEeHIm9xtnDkK5VA=
+github.com/devtron-labs/common-lib v0.16.1-0.20240904133334-7918e7c25b63/go.mod h1:rAY9Xd6iz+OqNQ3nO3reVHapAVr1N6Osf4Irdc0A08Q=
 github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f h1:lO4WD4F/rVNCu3HqELle0jiPLLBs70cWOduZpkS1E78=
 github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f/go.mod h1:cuUVRXasLTGF7a8hSLbxyZXjz+1KgoB3wDUb6vlszIc=
+github.com/docker/cli v24.0.6+incompatible h1:fF+XCQCgJjjQNIMjzaSmiKJSCcfcXb3TWTcc7GAneOY=
+github.com/docker/cli v24.0.6+incompatible/go.mod h1:JLrzqnKDaYBop7H2jaqPtU4hHvMKP+vjCwu2uszcLI8=
 github.com/docker/distribution v2.8.2+incompatible h1:T3de5rq0dB1j30rp0sA2rER+m322EBzniBPB6ZIzuh8=
 github.com/docker/distribution v2.8.2+incompatible/go.mod h1:J2gT2udsDAN96Uj4KfcMRqY0/ypR+oyYUYmja8H+y+w=
 github.com/docopt/docopt-go v0.0.0-20180111231733-ee0de3bc6815/go.mod h1:WwZ+bS3ebgob9U8Nd0kOddGdZWjyMGR8Wziv+TBNwSE=
