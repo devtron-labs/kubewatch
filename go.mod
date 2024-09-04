@@ -1,6 +1,8 @@
 module github.com/devtron-labs/kubewatch
 
-go 1.20
+go 1.21
+
+toolchain go1.22.3
 
 require (
 	github.com/argoproj/argo-cd/v2 v2.8.17
@@ -34,7 +36,7 @@ require (
 )
 
 require (
-	github.com/devtron-labs/common-lib v0.0.25-0.20240809073131-5cefb0e8a93a
+	github.com/devtron-labs/common-lib v0.16.1-0.20240904084847-f6284c6d18be
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/wire v0.6.0
 	github.com/imdario/mergo v0.3.16 // indirect
@@ -79,6 +81,7 @@ require (
 	github.com/colinmarc/hdfs v1.1.4-0.20180805212432-9746310a4d31 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
+	github.com/docker/cli v24.0.6+incompatible // indirect
 	github.com/docker/distribution v2.8.2+incompatible // indirect
 	github.com/doublerebel/bellows v0.0.0-20160303004610-f177d92a03d3 // indirect
 	github.com/emicklei/go-restful/v3 v3.11.0 // indirect
