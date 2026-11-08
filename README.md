@@ -5,6 +5,17 @@
 **kubewatch** is a Kubernetes watcher that currently publishes notification to available collaboration hubs/notification channels. Run it in your k8s cluster, and you will get event notifications through webhooks.
 
 #### Environment variables
+### Cluster discovery namespace
+
+Set `CLUSTER_INFORMER_NAMESPACE` to the namespace containing the
+`cluster.request/modify` Secrets when cluster registration is centralized.
+The cluster-discovery informer then lists and watches Secrets only in that
+namespace. Grant its ServiceAccount Secret read/list/watch through a RoleBinding
+there. This setting does not change CI/CD, application or general resource
+informers; their permissions must be configured separately. Leave it empty to
+preserve all-namespace discovery. A field selector alone does not constrain
+Kubernetes RBAC, so namespace-scoped permissions require this setting as well.
+
 ### NatStreaming
 variable Name       |Default Value         |Description
 --------------------|----------------------|------------------

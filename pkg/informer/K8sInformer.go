@@ -39,6 +39,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/utils/pointer"
 	"log"
+	"os"
 	"sort"
 	"strconv"
 	"sync"
@@ -147,10 +148,7 @@ func (impl *K8sInformerImpl) startClusterInformer() {
 		return
 	}
 
-	labelOptions := kubeinformers.WithTweakListOptions(func(opts *metav1.ListOptions) {
-		opts.FieldSelector = "type==cluster.request/modify"
-	})
-	informerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(clusterClient, 15*time.Minute, labelOptions)
+	informerFactory := clusterSecretInformerFactory(clusterClient, os.Getenv("CLUSTER_INFORMER_NAMESPACE"))
 	stopper := make(chan struct{})
 	secretInformer := informerFactory.Core().V1().Secrets()
 	secretInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
